@@ -1,0 +1,37 @@
+# ---------- base ----------
+FROM node:18-alpine AS base
+WORKDIR /app
+ENV NODE_ENV=production
+
+# ---------- deps ----------
+FROM base AS deps
+COPY package.json package-lock.json* /app/
+RUN npm ci --only=production
+
+# ---------- build (no transpile, just prepare) ----------
+FROM base AS build
+WORKDIR /app
+COPY package.json package-lock.json* /app/
+RUN npm ci
+COPY . /app
+
+# ---------- release ----------
+FROM node:18-alpine AS release
+WORKDIR /app
+ENV NODE_ENV=production
+
+# install tini for proper signal handling
+RUN apk add --no-cache tini
+
+# copy deps and app
+COPY --from=deps /app/node_modules /app/node_modules
+COPY . /app
+
+# server will listen on 5000
+EXPOSE 5000
+
+# entrypoint to run DB migrations then start server
+COPY docker/server-entrypoint.sh /usr/local/bin/server-entrypoint.sh
+RUN chmod +x /usr/local/bin/server-entrypoint.sh
+
+ENTRYPOINT ["/sbin/tini","--","/usr/local/bin/server-entrypoint.sh"] 

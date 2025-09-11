@@ -1,70 +1,225 @@
-# Getting Started with Create React App
+# Веб-приложение для прогнозирования успеваемости студентов
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Веб-приложение на React с Node.js и PostgreSQL для прогнозирования успеваемости студентов.
 
-## Available Scripts
+## Функциональность
 
-In the project directory, you can run:
+- **Авторизация пользователей** с ролями "студент" и "преподаватель"
+- **Управление данными студентов** (группы, ФИО, оценки)
+- **Прогнозирование успеваемости** на основе исторических данных
+- **Разграничение доступа**: преподаватели могут добавлять данные, студенты только просматривать прогнозы
 
-### `npm start`
+## Структура базы данных
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Таблицы:
+- `user_roles` - роли пользователей (студент/преподаватель)
+- `users` - пользователи системы
+- `groups` - группы студентов
+- `students` - информация о студентах
+- `exams` - экзамены
+- `credits` - зачеты
+- `exam_grades` - оценки по экзаменам
+- `credit_results` - результаты зачетов
+- `performance_predictions` - прогнозы успеваемости
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### Предметы:
+**Экзамены:**
+- Программирование
+- Схемотехника
+- Безопасность операционных систем
+- Математическая логика
+- Математический анализ
 
-### `npm test`
+**Зачеты:**
+- Философия
+- Правоведение
+- Основы информационной безопасности
+- Теория вероятности
+- Дискретная математика
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+**Группы:**
+- АБс-322
+- АБс-323
+- АБс-324
+- АБ-321
+- АБ-322
 
-### `npm run build`
+## Установка и настройка
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Предварительные требования
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. **Node.js** (версия 14 или выше)
+2. **PostgreSQL** (версия 12 или выше)
+3. **pgAdmin4** (для управления базой данных)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Шаг 1: Клонирование репозитория
 
-### `npm run eject`
+```bash
+git clone <repository-url>
+cd student-performance-prediction
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Шаг 2: Установка зависимостей
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+# Установка серверных зависимостей
+npm install
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# Установка клиентских зависимостей
+npm run install-client
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### Шаг 3: Настройка базы данных
 
-## Learn More
+1. **Создайте базу данных в PostgreSQL:**
+   ```sql
+   CREATE DATABASE coursework_db;
+   ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+2. **Настройте подключение в pgAdmin4:**
+   - Server name: coursework
+   - Host name: localhost
+   - Port: 5432
+   - Username: postgres
+   - Password: 123
+   - Database: coursework_db
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+3. **Запустите скрипт создания таблиц:**
+   ```bash
+   npm run setup-db
+   ```
 
-### Code Splitting
+### Шаг 4: Настройка переменных окружения
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Создайте файл `.env` в корневой директории:
 
-### Analyzing the Bundle Size
+```env
+# База данных
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=123
+DB_NAME=coursework_db
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+# JWT секрет
+JWT_SECRET=your-super-secret-jwt-key
 
-### Making a Progressive Web App
+# Порт сервера
+PORT=5000
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+# Режим разработки
+NODE_ENV=development
+```
 
-### Advanced Configuration
+### Шаг 5: Запуск приложения
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```bash
+# Запуск в режиме разработки (сервер + клиент)
+npm run dev
 
-### Deployment
+# Или запуск только сервера
+npm start
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+# Или запуск только клиента
+npm run client
+```
 
-### `npm run build` fails to minify
+## Структура проекта
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```
+student-performance-prediction/
+├── client/                 # React приложение
+│   ├── public/
+│   ├── src/
+│   │   ├── components/     # React компоненты
+│   │   ├── pages/         # Страницы приложения
+│   │   ├── services/      # API сервисы
+│   │   ├── utils/         # Утилиты
+│   │   └── App.js
+│   └── package.json
+├── server/                 # Node.js сервер
+│   ├── routes/            # API маршруты
+│   ├── middleware/        # Промежуточное ПО
+│   ├── models/            # Модели данных
+│   ├── utils/             # Утилиты сервера
+│   └── server.js
+├── database_schema.sql    # SQL скрипт создания БД
+├── setup_database.js      # Скрипт настройки БД
+├── package.json
+└── README.md
+```
+
+## API Endpoints
+
+### Аутентификация
+- `POST /api/auth/register` - Регистрация пользователя
+- `POST /api/auth/login` - Вход в систему
+- `GET /api/auth/profile` - Получение профиля пользователя
+
+### Студенты
+- `GET /api/students` - Получение списка студентов
+- `POST /api/students` - Добавление студента (только преподаватели)
+- `GET /api/students/:id` - Получение информации о студенте
+- `PUT /api/students/:id` - Обновление данных студента
+
+### Оценки
+- `GET /api/grades` - Получение оценок
+- `POST /api/grades` - Добавление оценок (только преподаватели)
+- `PUT /api/grades/:id` - Обновление оценок
+
+### Прогнозы
+- `GET /api/predictions` - Получение прогнозов
+- `POST /api/predictions/calculate` - Расчет прогноза
+
+## Разработка
+
+### Добавление новых функций
+
+1. Создайте компонент в `client/src/components/`
+2. Добавьте маршрут в `client/src/App.js`
+3. Создайте API endpoint в `server/routes/`
+4. Обновите базу данных при необходимости
+
+### Тестирование
+
+```bash
+# Запуск тестов клиента
+cd client && npm test
+
+# Запуск тестов сервера
+npm test
+```
+
+## Развертывание
+
+### Локальное развертывание
+
+```bash
+# Сборка клиента
+npm run build
+
+# Запуск продакшн сервера
+NODE_ENV=production npm start
+```
+
+### Развертывание на Heroku
+
+1. Создайте приложение в Heroku
+2. Добавьте PostgreSQL addon
+3. Настройте переменные окружения
+4. Запустите деплой
+
+```bash
+heroku create your-app-name
+heroku addons:create heroku-postgresql
+heroku config:set NODE_ENV=production
+git push heroku main
+```
+
+## Лицензия
+
+MIT License
+
+## Поддержка
+
+При возникновении проблем создайте issue в репозитории проекта.
