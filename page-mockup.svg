@@ -1,0 +1,309 @@
+<svg width="1260" height="880" viewBox="0 0 1260 880" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1260" height="880" fill="#F5F5F7"/>
+  
+  <!-- Header Section -->
+  <rect x="22" y="12" width="1216" height="70" rx="8" fill="white"/>
+  
+  <!-- Title -->
+  <text x="22" y="40" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#1A1A1A">
+    Прогнозы успеваемости
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="22" y="65" font-family="Arial, sans-serif" font-size="14" fill="#666666">
+    Анализ и управление прогнозами успеваемости студентов
+  </text>
+  
+  <!-- Update Button -->
+  <rect x="1117" y="22" width="115" height="36" rx="6" fill="white" stroke="#DDDDDD" stroke-width="1"/>
+  <circle cx="1135" cy="40" r="8" stroke="#333333" stroke-width="1.5" fill="none"/>
+  <path d="M 1137 38 L 1141 42 L 1145 34" stroke="#333333" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1150" y="44" font-family="Arial, sans-serif" font-size="14" fill="#333333">
+    Обновить
+  </text>
+  
+  <!-- Filters Section -->
+  <rect x="22" y="102" width="1216" height="151" rx="8" fill="white"/>
+  
+  <!-- Filters Icon and Title -->
+  <path d="M 46 130 L 52 138 L 52 148 L 58 152 L 58 138 L 64 130 Z" fill="#666666"/>
+  <text x="72" y="142" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#1A1A1A">
+    Фильтры
+  </text>
+  
+  <!-- Filter Labels -->
+  <text x="46" y="178" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+    Группа
+  </text>
+  <text x="342" y="178" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+    Минимальный балл
+  </text>
+  <text x="638" y="178" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+    Максимальный балл
+  </text>
+  
+  <!-- Group Dropdown -->
+  <rect x="46" y="188" width="280" height="44" rx="6" fill="white" stroke="#DDDDDD" stroke-width="1"/>
+  <text x="62" y="214" font-family="Arial, sans-serif" font-size="14" fill="#333333">
+    Все группы
+  </text>
+  <path d="M 306 208 L 310 212 L 314 208" stroke="#666666" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Min Score Input -->
+  <rect x="342" y="188" width="280" height="44" rx="6" fill="white" stroke="#DDDDDD" stroke-width="1"/>
+  <text x="358" y="214" font-family="Arial, sans-serif" font-size="14" fill="#333333">
+    0
+  </text>
+  <circle cx="600" cy="210" r="8" fill="#E8E8E8"/>
+  <path d="M 597 207 L 603 213 M 597 213 L 603 207" stroke="#999999" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Max Score Input -->
+  <rect x="638" y="188" width="280" height="44" rx="6" fill="white" stroke="#DDDDDD" stroke-width="1"/>
+  <text x="654" y="214" font-family="Arial, sans-serif" font-size="14" fill="#333333">
+    100
+  </text>
+  <circle cx="896" cy="210" r="8" fill="#E8E8E8"/>
+  <path d="M 893 207 L 899 213 M 893 213 L 899 207" stroke="#999999" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Apply Button -->
+  <rect x="934" y="188" width="280" height="44" rx="6" fill="#2563EB"/>
+  <text x="1040" y="214" font-family="Arial, sans-serif" font-size="15" font-weight="600" fill="white" text-anchor="middle">
+    Применить
+  </text>
+  
+  <!-- Statistics Section -->
+  <rect x="22" y="273" width="1216" height="150" rx="8" fill="white"/>
+  
+  <!-- Statistics Title -->
+  <text x="46" y="304" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="#1A1A1A">
+    Статистика по группам
+  </text>
+  
+  <!-- Group Cards Container -->
+  <g id="group-cards">
+    <!-- Card 1: АБ-321 -->
+    <rect x="46" y="330" width="224" height="75" rx="8" fill="#FAFAFA" stroke="#E5E5E5" stroke-width="1"/>
+    <text x="63" y="355" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#1A1A1A">
+      АБ-321
+    </text>
+    <text x="63" y="374" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Студентов:
+    </text>
+    <text x="245" y="374" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      1
+    </text>
+    <text x="63" y="391" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      С прогнозами:
+    </text>
+    <text x="245" y="391" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      2
+    </text>
+    <text x="63" y="408" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Средний балл:
+    </text>
+    <text x="245" y="408" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      58.0
+    </text>
+    
+    <!-- Card 2: АБ-322 -->
+    <rect x="286" y="330" width="224" height="75" rx="8" fill="#FAFAFA" stroke="#E5E5E5" stroke-width="1"/>
+    <text x="303" y="355" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#1A1A1A">
+      АБ-322
+    </text>
+    <text x="303" y="374" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Студентов:
+    </text>
+    <text x="485" y="374" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      0
+    </text>
+    <text x="303" y="391" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      С прогнозами:
+    </text>
+    <text x="485" y="391" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      0
+    </text>
+    <text x="303" y="408" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Средний балл:
+    </text>
+    <text x="485" y="408" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      0.0
+    </text>
+    
+    <!-- Card 3: АБс-322 -->
+    <rect x="526" y="330" width="224" height="75" rx="8" fill="#FAFAFA" stroke="#E5E5E5" stroke-width="1"/>
+    <text x="543" y="355" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#1A1A1A">
+      АБс-322
+    </text>
+    <text x="543" y="374" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Студентов:
+    </text>
+    <text x="725" y="374" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      3
+    </text>
+    <text x="543" y="391" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      С прогнозами:
+    </text>
+    <text x="725" y="391" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      3
+    </text>
+    <text x="543" y="408" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Средний балл:
+    </text>
+    <text x="725" y="408" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      74.1
+    </text>
+    
+    <!-- Card 4: АБс-323 -->
+    <rect x="46" y="424" width="224" height="75" rx="8" fill="#FAFAFA" stroke="#E5E5E5" stroke-width="1"/>
+    <text x="63" y="449" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#1A1A1A">
+      АБс-323
+    </text>
+    <text x="63" y="468" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Студентов:
+    </text>
+    <text x="245" y="468" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      1
+    </text>
+    <text x="63" y="485" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      С прогнозами:
+    </text>
+    <text x="245" y="485" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      1
+    </text>
+    <text x="63" y="502" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Средний балл:
+    </text>
+    <text x="245" y="502" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      45.2
+    </text>
+    
+    <!-- Card 5: АБс-324 -->
+    <rect x="286" y="424" width="224" height="75" rx="8" fill="#FAFAFA" stroke="#E5E5E5" stroke-width="1"/>
+    <text x="303" y="449" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="#1A1A1A">
+      АБс-324
+    </text>
+    <text x="303" y="468" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Студентов:
+    </text>
+    <text x="485" y="468" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      0
+    </text>
+    <text x="303" y="485" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      С прогнозами:
+    </text>
+    <text x="485" y="485" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      0
+    </text>
+    <text x="303" y="502" font-family="Arial, sans-serif" font-size="13" fill="#666666">
+      Средний балл:
+    </text>
+    <text x="485" y="502" font-family="Arial, sans-serif" font-size="13" fill="#333333" text-anchor="end">
+      0.0
+    </text>
+  </g>
+  
+  <!-- Table Section -->
+  <rect x="22" y="543" width="1216" height="315" rx="8" fill="white"/>
+  
+  <!-- Table Title with Icon -->
+  <path d="M 46 570 L 50 576 L 54 570" stroke="#2563EB" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="66" y="578" font-family="Arial, sans-serif" font-size="18" font-weight="600" fill="#1A1A1A">
+    Прогнозы (6)
+  </text>
+  
+  <!-- Table Header -->
+  <rect x="46" y="595" width="1168" height="40" fill="#F9FAFB"/>
+  <text x="62" y="619" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B7280">
+    СТУДЕНТ
+  </text>
+  <text x="372" y="619" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B7280">
+    ГРУППА
+  </text>
+  <text x="512" y="619" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B7280">
+    ЭКЗАМЕНЫ
+  </text>
+  <text x="662" y="619" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B7280">
+    ЗАЧЕТЫ
+  </text>
+  <text x="795" y="619" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B7280">
+    ОБЩИЙ БАЛЛ
+  </text>
+  <text x="967" y="619" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B7280">
+    ДАТА
+  </text>
+  <text x="1117" y="619" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#6B7280">
+    ДЕЙСТВИЯ
+  </text>
+  
+  <!-- Table Row 1 -->
+  <line x1="46" y1="635" x2="1214" y2="635" stroke="#E5E7EB" stroke-width="1"/>
+  <text x="62" y="665" font-family="Arial, sans-serif" font-size="14" fill="#1F2937">
+    Зинин Вячеслав Михайлович
+  </text>
+  <rect x="372" y="650" width="65" height="24" rx="4" fill="#DBEAFE"/>
+  <text x="404" y="666" font-family="Arial, sans-serif" font-size="12" font-weight="600" fill="#1E40AF" text-anchor="middle">
+    АБс-322
+  </text>
+  <text x="512" y="665" font-family="Arial, sans-serif" font-size="14" fill="#1F2937">
+    3.20
+  </text>
+  <text x="662" y="665" font-family="Arial, sans-serif" font-size="14" fill="#1F2937">
+    100.00%
+  </text>
+  <rect x="795" y="652" width="60" height="22" rx="4" fill="#FEE2E2"/>
+  <text x="825" y="667" font-family="Arial, sans-serif" font-size="13" font-weight="600" fill="#991B1B" text-anchor="middle">
+    58.00
+  </text>
+  <text x="967" y="665" font-family="Arial, sans-serif" font-size="14" fill="#6B7280">
+    09.11.2025
+  </text>
+  
+  <!-- Action Icons -->
+  <circle cx="1130" cy="662" r="10" fill="none" stroke="#2563EB" stroke-width="1.5"/>
+  <circle cx="1130" cy="662" r="3" fill="#2563EB"/>
+  <rect x="1160" y="654" width="16" height="16" rx="2" fill="none" stroke="#DC2626" stroke-width="1.5"/>
+  <line x1="1164" y1="658" x2="1172" y2="666" stroke="#DC2626" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="1172" y1="658" x2="1164" y2="666" stroke="#DC2626" stroke-width="1.5" stroke-linecap="round"/>
+  
+  <!-- Additional table rows placeholders -->
+  <line x1="46" y1="685" x2="1214" y2="685" stroke="#E5E7EB" stroke-width="1"/>
+  <rect x="62" y="695" width="200" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="372" y="695" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="512" y="695" width="40" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="662" y="695" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="795" y="695" width="50" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="967" y="695" width="80" height="12" rx="4" fill="#F3F4F6"/>
+  
+  <line x1="46" y1="720" x2="1214" y2="720" stroke="#E5E7EB" stroke-width="1"/>
+  <rect x="62" y="730" width="180" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="372" y="730" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="512" y="730" width="40" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="662" y="730" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="795" y="730" width="50" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="967" y="730" width="80" height="12" rx="4" fill="#F3F4F6"/>
+  
+  <line x1="46" y1="755" x2="1214" y2="755" stroke="#E5E7EB" stroke-width="1"/>
+  <rect x="62" y="765" width="220" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="372" y="765" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="512" y="765" width="40" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="662" y="765" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="795" y="765" width="50" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="967" y="765" width="80" height="12" rx="4" fill="#F3F4F6"/>
+  
+  <line x1="46" y1="790" x2="1214" y2="790" stroke="#E5E7EB" stroke-width="1"/>
+  <rect x="62" y="800" width="190" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="372" y="800" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="512" y="800" width="40" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="662" y="800" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="795" y="800" width="50" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="967" y="800" width="80" height="12" rx="4" fill="#F3F4F6"/>
+  
+  <line x1="46" y1="825" x2="1214" y2="825" stroke="#E5E7EB" stroke-width="1"/>
+  <rect x="62" y="835" width="210" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="372" y="835" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="512" y="835" width="40" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="662" y="835" width="60" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="795" y="835" width="50" height="12" rx="4" fill="#F3F4F6"/>
+  <rect x="967" y="835" width="80" height="12" rx="4" fill="#F3F4F6"/>
+</svg>
