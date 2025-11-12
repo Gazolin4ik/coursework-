@@ -10,6 +10,12 @@ const pool = new Pool({
     max: 20, // максимальное количество клиентов в пуле
     idleTimeoutMillis: 30000, // время неактивности клиента
     connectionTimeoutMillis: 2000, // время ожидания подключения
+    // Принудительно использовать IPv4
+    family: 4,
+    // Дополнительные настройки для Docker
+    ssl: false,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 0
 });
 
 // Обработка событий пула

@@ -1,7 +1,4 @@
 const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const authRoutes = require('./server/routes/auth');
@@ -12,23 +9,30 @@ const predictionRoutes = require('./server/routes/predictions');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware безопасности
-app.use(helmet());
-
-// Настройка CORS
-app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-domain.com'] 
-        : ['http://localhost:3000'],
-    credentials: true
-}));
-
-// Ограничение запросов
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 минут
-    max: 100 // максимум 100 запросов с одного IP
+// CORS - ПЕРВЫЙ MIDDLEWARE!
+app.use((req, res, next) => {
+    console.log(`🔥 CORS: ${req.method} ${req.path} from ${req.get('Origin')}`);
+    res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        console.log('🔥 CORS: Handling OPTIONS');
+        return res.sendStatus(200);
+    }
+    next();
 });
-app.use('/api/', limiter);
+
+// Middleware безопасности (временно отключен для отладки CORS)
+// app.use(helmet());
+
+// Ограничение запросов (временно отключено для отладки CORS)
+// const limiter = rateLimit({
+//     windowMs: 15 * 60 * 1000, // 15 минут
+//     max: 100 // максимум 100 запросов с одного IP
+// });
+// app.use('/api/', limiter);
 
 // Парсинг JSON
 app.use(express.json({ limit: '10mb' }));

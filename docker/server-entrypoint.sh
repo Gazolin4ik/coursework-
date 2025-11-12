@@ -10,12 +10,16 @@ set -e
 
 echo "Waiting for PostgreSQL at ${DB_HOST}:${DB_PORT}..."
 for i in $(seq 1 60); do
-  nc -z ${DB_HOST} ${DB_PORT} && break
+  if nc -z ${DB_HOST} ${DB_PORT}; then
+    echo "PostgreSQL is ready!"
+    break
+  fi
+  echo "Attempt $i/60: PostgreSQL not ready yet..."
   sleep 1
 done
 
 if ! nc -z ${DB_HOST} ${DB_PORT}; then
-  echo "PostgreSQL is not reachable" >&2
+  echo "PostgreSQL is not reachable after 60 attempts" >&2
   exit 1
 fi
 
