@@ -26,7 +26,7 @@ const Layout = () => {
   };
 
   const navigation = [
-    { name: 'Дашборд', href: '/dashboard', icon: Home },
+    { name: 'Главная страница', href: '/dashboard', icon: Home },
     ...(isTeacher ? [
       { name: 'Студенты', href: '/students', icon: Users },
       { name: 'Прогнозы', href: '/predictions', icon: TrendingUp },
@@ -138,7 +138,7 @@ const Layout = () => {
           <div className="flex-1 px-4 flex justify-between">
             <div className="flex-1 flex items-center">
               <h1 className="text-2xl font-semibold text-gray-900">
-                {navigation.find(item => isActive(item.href))?.name || 'Дашборд'}
+                {navigation.find(item => isActive(item.href))?.name || 'Главная страница'}
               </h1>
             </div>
             
