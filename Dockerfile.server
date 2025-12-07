@@ -20,12 +20,16 @@ FROM node:18-alpine AS release
 WORKDIR /app
 ENV NODE_ENV=production
 
-# install tini for proper signal handling
-RUN apk add --no-cache tini
+# install tini and netcat for proper signal handling and network checks
+RUN apk add --no-cache tini netcat-openbsd
 
 # copy deps and app
 COPY --from=deps /app/node_modules /app/node_modules
 COPY . /app
+
+# Убеждаемся, что скрипт генерации данных скопирован
+COPY generate_realistic_data.js /app/generate_realistic_data.js
+COPY setup_database.js /app/setup_database.js
 
 # server will listen on 5000
 EXPOSE 5000

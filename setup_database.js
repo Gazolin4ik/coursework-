@@ -23,7 +23,16 @@ async function setupDatabase() {
         const sqlScript = fs.readFileSync(path.join(__dirname, 'database_schema.sql'), 'utf8');
         
         console.log('Выполнение SQL-скрипта для создания таблиц...');
-        await client.query(sqlScript);
+        try {
+            await client.query(sqlScript);
+        } catch (error) {
+            // Игнорируем ошибки о существующих объектах (таблицы, триггеры и т.д.)
+            if (error.code === '42P07' || error.code === '42710' || error.code === '42P16') {
+                console.log('⚠️  Некоторые объекты уже существуют, это нормально');
+            } else {
+                throw error;
+            }
+        }
         
         console.log('✅ База данных успешно настроена!');
         console.log('Созданы следующие таблицы:');

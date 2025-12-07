@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, CheckCircle, XCircle, Edit, ArrowLeft, Plus, X } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Edit, ArrowLeft, Plus, X, Search, CheckSquare, Square } from 'lucide-react';
 import api from '../services/authService';
 import toast from 'react-hot-toast';
 
@@ -14,8 +14,11 @@ const GroupStudents = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [studentsLoading, setStudentsLoading] = useState(false);
-  const [gradeForm, setGradeForm] = useState({ studentId: '', grade: '', isPassed: 'true' });
+  const [selectedStudents, setSelectedStudents] = useState(new Set());
   const [showAddForm, setShowAddForm] = useState(false);
+  const [bulkGrade, setBulkGrade] = useState('');
+  const [bulkIsPassed, setBulkIsPassed] = useState('true');
+  const [searchTerm, setSearchTerm] = useState('');
   const [editModal, setEditModal] = useState({ isOpen: false, student: null, currentGrade: null, currentIsPassed: null });
   const [editForm, setEditForm] = useState({ grade: '', isPassed: 'true' });
 
@@ -62,6 +65,7 @@ const GroupStudents = () => {
         }
       });
       setStudents(response.data.students || []);
+      setSelectedStudents(new Set()); // Сбрасываем выбор при загрузке
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Ошибка при загрузке студентов');
@@ -71,36 +75,109 @@ const GroupStudents = () => {
     }
   };
 
-  const handleAddGrade = async (e) => {
-    e.preventDefault();
+  const toggleStudentSelection = (studentId) => {
+    const newSelection = new Set(selectedStudents);
+    if (newSelection.has(studentId)) {
+      newSelection.delete(studentId);
+    } else {
+      newSelection.add(studentId);
+    }
+    setSelectedStudents(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    const filtered = filteredStudents;
     
-    if (!gradeForm.studentId || (disciplineType === 'exam' && !gradeForm.grade) || (disciplineType === 'credit' && !gradeForm.isPassed)) {
-      toast.error('Заполните все поля');
+    // Если выбраны все отфильтрованные студенты, снимаем выбор
+    const allFilteredSelected = filtered.length > 0 && 
+      filtered.every(s => selectedStudents.has(s.id));
+    
+    if (allFilteredSelected) {
+      // Снимаем выбор только с отфильтрованных
+      const newSelection = new Set(selectedStudents);
+      filtered.forEach(s => newSelection.delete(s.id));
+      setSelectedStudents(newSelection);
+    } else {
+      // Выбираем всех отфильтрованных студентов
+      const newSelection = new Set(selectedStudents);
+      filtered.forEach(s => newSelection.add(s.id));
+      setSelectedStudents(newSelection);
+    }
+  };
+
+  const getStudentsWithoutGrade = () => {
+    return students.filter(s => {
+      if (disciplineType === 'exam') {
+        return s.exam_grade === null || s.exam_grade === undefined;
+      } else {
+        return s.credit_passed === null || s.credit_passed === undefined;
+      }
+    });
+  };
+
+  const handleBulkAddGrades = async () => {
+    const selectedIds = Array.from(selectedStudents);
+
+    if (selectedIds.length === 0) {
+      toast.error('Выберите хотя бы одного студента');
       return;
     }
 
-    try {
-      if (disciplineType === 'exam') {
-        await api.post('/grades/exam', {
-          studentId: parseInt(gradeForm.studentId),
-          examId: parseInt(disciplineId),
-          grade: parseInt(gradeForm.grade)
-        });
-        toast.success('Оценка успешно добавлена');
-      } else {
-        await api.post('/grades/credit', {
-          studentId: parseInt(gradeForm.studentId),
-          creditId: parseInt(disciplineId),
-          isPassed: gradeForm.isPassed === 'true'
-        });
-        toast.success('Результат зачета успешно добавлен');
+    if (disciplineType === 'exam') {
+      if (!bulkGrade || isNaN(parseInt(bulkGrade)) || parseInt(bulkGrade) < 2 || parseInt(bulkGrade) > 5) {
+        toast.error('Выберите корректную оценку от 2 до 5');
+        return;
       }
+    }
 
-      await fetchStudents();
-      setGradeForm({ studentId: '', grade: '', isPassed: 'true' });
+    try {
+      const promises = selectedIds.map(studentId => {
+        const student = students.find(s => s.id === parseInt(studentId));
+        const hasGrade = disciplineType === 'exam' 
+          ? student?.exam_grade_id 
+          : student?.credit_result_id;
+
+        if (disciplineType === 'exam') {
+          if (hasGrade) {
+            // Обновляем существующую оценку
+            return api.put(`/grades/exam/${student.exam_grade_id}`, {
+              grade: parseInt(bulkGrade)
+            });
+          } else {
+            // Добавляем новую оценку
+            return api.post('/grades/exam', {
+              studentId: parseInt(studentId),
+              examId: parseInt(disciplineId),
+              grade: parseInt(bulkGrade)
+            });
+          }
+        } else {
+          if (hasGrade) {
+            // Обновляем существующий результат
+            return api.put(`/grades/credit/${student.credit_result_id}`, {
+              isPassed: bulkIsPassed === 'true'
+            });
+          } else {
+            // Добавляем новый результат
+            return api.post('/grades/credit', {
+              studentId: parseInt(studentId),
+              creditId: parseInt(disciplineId),
+              isPassed: bulkIsPassed === 'true'
+            });
+          }
+        }
+      });
+
+      await Promise.all(promises);
+      toast.success(`Оценки успешно проставлены для ${selectedIds.length} студент${selectedIds.length > 1 ? 'ов' : 'а'}`);
+      setSelectedStudents(new Set());
+      setBulkGrade('');
+      setBulkIsPassed('true');
       setShowAddForm(false);
+      await fetchStudents();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Ошибка при добавлении оценки');
+      console.error('Error adding bulk grades:', error);
+      toast.error(error.response?.data?.message || 'Ошибка при проставлении оценок');
     }
   };
 
@@ -178,13 +255,13 @@ const GroupStudents = () => {
     );
   }
 
-  const studentsWithoutGrade = students.filter(s => {
-    if (disciplineType === 'exam') {
-      return s.exam_grade === null || s.exam_grade === undefined;
-    } else {
-      return s.credit_passed === null || s.credit_passed === undefined;
-    }
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = student.full_name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
   });
+
+  const allSelected = filteredStudents.length > 0 && 
+    filteredStudents.every(s => selectedStudents.has(s.id));
 
   return (
     <div className="space-y-6">
@@ -202,15 +279,29 @@ const GroupStudents = () => {
         </p>
       </div>
 
+      {/* Фильтр поиска */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Поиск по имени студента..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 block w-full"
+          />
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <Users className="h-5 w-5 text-purple-600 mr-2" />
             <h2 className="text-lg font-medium text-gray-900">
-              Список студентов ({students.length})
+              Список студентов ({filteredStudents.length})
             </h2>
           </div>
-          {studentsWithoutGrade.length > 0 && (
+          {students.length > 0 && (
             <button
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
@@ -221,36 +312,39 @@ const GroupStudents = () => {
           )}
         </div>
 
-        {showAddForm && studentsWithoutGrade.length > 0 && (
-          <form onSubmit={handleAddGrade} className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Студент
-                </label>
-                <select
-                  value={gradeForm.studentId}
-                  onChange={(e) => setGradeForm({ ...gradeForm, studentId: e.target.value })}
-                  className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  required
+        {/* Форма массового проставления */}
+        {showAddForm && students.length > 0 && (
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={toggleSelectAll}
+                  className="flex items-center px-3 py-1 text-sm text-blue-600 hover:bg-blue-100 rounded-md"
                 >
-                  <option value="">Выберите студента</option>
-                  {studentsWithoutGrade.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.full_name}
-                    </option>
-                  ))}
-                </select>
+                  {allSelected ? (
+                    <>
+                      <CheckSquare className="h-4 w-4 mr-1" />
+                      Снять все
+                    </>
+                  ) : (
+                    <>
+                      <Square className="h-4 w-4 mr-1" />
+                      Выбрать всех ({filteredStudents.length})
+                    </>
+                  )}
+                </button>
               </div>
-
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               {disciplineType === 'exam' ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Оценка
+                    Оценка для всех выбранных
                   </label>
                   <select
-                    value={gradeForm.grade}
-                    onChange={(e) => setGradeForm({ ...gradeForm, grade: e.target.value })}
+                    value={bulkGrade}
+                    onChange={(e) => setBulkGrade(e.target.value)}
                     className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                     required
                   >
@@ -264,11 +358,11 @@ const GroupStudents = () => {
               ) : (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Результат
+                    Результат для всех выбранных
                   </label>
                   <select
-                    value={gradeForm.isPassed}
-                    onChange={(e) => setGradeForm({ ...gradeForm, isPassed: e.target.value })}
+                    value={bulkIsPassed}
+                    onChange={(e) => setBulkIsPassed(e.target.value)}
                     className="block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                     required
                   >
@@ -279,65 +373,92 @@ const GroupStudents = () => {
               )}
 
               <div className="flex items-end">
+                <div className="text-sm text-gray-600">
+                  Выбрано: <span className="font-semibold text-blue-600">{selectedStudents.size}</span> из {filteredStudents.length}
+                </div>
+              </div>
+
+              <div className="flex items-end">
                 <button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+                  onClick={handleBulkAddGrades}
+                  disabled={selectedStudents.size === 0 || (disciplineType === 'exam' && !bulkGrade)}
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium"
                 >
-                  Добавить
+                  Проставить выбранным
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         )}
 
         {studentsLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-        ) : students.length === 0 ? (
+        ) : filteredStudents.length === 0 ? (
           <p className="text-sm text-gray-500 text-center py-8">Нет студентов в группе</p>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {students.map((student) => {
+            {filteredStudents.map((student) => {
               const grade = disciplineType === 'exam' 
                 ? student.exam_grade 
                 : student.credit_passed;
               const hasGrade = grade !== null && grade !== undefined;
+              const isSelected = selectedStudents.has(student.id);
               
               return (
                 <div
                   key={student.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
+                  onClick={() => toggleStudentSelection(student.id)}
+                  className={`flex items-center justify-between p-4 rounded-md transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-blue-100 border-2 border-blue-500'
+                      : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                  }`}
                 >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{student.full_name}</p>
-                    {hasGrade ? (
-                      <div className="flex items-center mt-1">
-                        {disciplineType === 'exam' ? (
-                          <span className="text-sm text-gray-600">Оценка: <span className="font-semibold">{grade}</span></span>
-                        ) : (
-                          <span className="text-sm text-gray-600">
-                            {grade ? (
-                              <span className="flex items-center text-green-600">
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Сдан
-                              </span>
-                            ) : (
-                              <span className="flex items-center text-red-600">
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Не сдан
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500 mt-1">Оценка не проставлена</p>
-                    )}
+                  <div className="flex items-center flex-1">
+                    <div className="mr-3">
+                      {isSelected ? (
+                        <CheckSquare className="h-5 w-5 text-blue-600" />
+                      ) : (
+                        <Square className="h-5 w-5 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                        {student.full_name}
+                      </p>
+                      {hasGrade ? (
+                        <div className="flex items-center mt-1">
+                          {disciplineType === 'exam' ? (
+                            <span className="text-sm text-gray-600">Оценка: <span className="font-semibold">{grade}</span></span>
+                          ) : (
+                            <span className="text-sm text-gray-600">
+                              {grade ? (
+                                <span className="flex items-center text-green-600">
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Сдан
+                                </span>
+                              ) : (
+                                <span className="flex items-center text-red-600">
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Не сдан
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-1">Оценка не проставлена</p>
+                      )}
+                    </div>
                   </div>
                   {hasGrade && (
                     <button
-                      onClick={() => handleOpenEditModal(student, grade, grade)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEditModal(student, grade, grade);
+                      }}
                       className="ml-4 p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                       title="Изменить оценку"
                     >
@@ -458,4 +579,3 @@ const GroupStudents = () => {
 };
 
 export default GroupStudents;
-

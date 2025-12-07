@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Users, BookOpen, Link as LinkIcon, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, BookOpen, Link as LinkIcon, X, Search } from 'lucide-react';
 import api from '../services/authService';
 import toast from 'react-hot-toast';
 
@@ -9,6 +9,7 @@ const AdminTeachers = () => {
   const [credits, setCredits] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -187,12 +188,34 @@ const AdminTeachers = () => {
         </button>
       </div>
 
+      {/* Фильтр поиска */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Поиск по ФИО или username..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 block w-full"
+          />
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Преподаватели ({teachers.length})</h3>
+          <h3 className="text-lg font-medium text-gray-900">
+            Преподаватели ({teachers.filter(t => 
+              t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              (t.username && t.username.toLowerCase().includes(searchTerm.toLowerCase()))
+            ).length})
+          </h3>
         </div>
         
-        {teachers.length === 0 ? (
+        {teachers.filter(t => 
+          t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (t.username && t.username.toLowerCase().includes(searchTerm.toLowerCase()))
+        ).length === 0 ? (
           <div className="text-center py-12">
             <Users className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">Преподаватели не найдены</h3>
@@ -209,7 +232,10 @@ const AdminTeachers = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {teachers.map((teacher) => (
+                {teachers.filter(t => 
+                  t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  (t.username && t.username.toLowerCase().includes(searchTerm.toLowerCase()))
+                ).map((teacher) => (
                   <tr key={teacher.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{teacher.full_name}</div>

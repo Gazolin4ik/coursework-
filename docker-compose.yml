@@ -66,6 +66,29 @@ services:
     ports:
       - "3000:80"
 
+  # Сервис для генерации тестовых данных
+  generate-data:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: coursework-generate-data
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: 123
+      DB_NAME: coursework_db
+      JWT_SECRET: super-secret
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/usr/local/bin/generate-data-entrypoint.sh"]
+    volumes:
+      - ./docker/generate-data-entrypoint.sh:/usr/local/bin/generate-data-entrypoint.sh:ro
+    profiles:
+      - tools  # Запускается только с профилем tools
+
 volumes:
   db_data:
-  pgadmin_data: 
+  pgadmin_data:

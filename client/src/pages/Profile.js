@@ -311,14 +311,6 @@ const Profile = () => {
                 {user.studentInfo.group_name}
               </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                ID студента
-              </label>
-              <p className="text-sm text-gray-900">
-                {user.studentInfo.id}
-              </p>
-            </div>
           </div>
         </div>
       )}
