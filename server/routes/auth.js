@@ -7,7 +7,7 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Регистрация пользователя
+// Регистрация пользователя (проверка, что студент/преподаватель уже добавлен администратором)
 router.post('/register', [
     body('username')
         .isLength({ min: 3, max: 50 })
@@ -36,22 +36,18 @@ router.post('/register', [
 
         const { username, password, fullName, role } = req.body;
 
-        // Проверка существования пользователя
-        const existingUser = await query(
+        // Проверка, что username не занят
+        const existingUserByUsername = await query(
             'SELECT id FROM users WHERE username = $1',
             [username]
         );
 
-        if (existingUser.rows.length > 0) {
+        if (existingUserByUsername.rows.length > 0) {
             return res.status(400).json({
-                error: 'User already exists',
+                error: 'Username already exists',
                 message: 'Пользователь с таким именем уже существует'
             });
         }
-
-        // Хеширование пароля
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         // Получение ID роли
         const roleResult = await query(
@@ -68,34 +64,133 @@ router.post('/register', [
 
         const roleId = roleResult.rows[0].id;
 
-        // Создание пользователя
-        const newUser = await query(
-            `INSERT INTO users (username, password_hash, full_name, role_id) 
-             VALUES ($1, $2, $3, $4) 
-             RETURNING id, username, full_name, role_id, created_at`,
-            [username, hashedPassword, fullName, roleId]
-        );
+        // Проверка, что студент/преподаватель с таким ФИО уже добавлен администратором
+        if (role === 'student') {
+            // Проверяем, что студент с таким ФИО существует
+            const existingStudent = await query(
+                'SELECT id, user_id FROM students WHERE full_name = $1',
+                [fullName]
+            );
 
-        const user = newUser.rows[0];
+            if (existingStudent.rows.length === 0) {
+                return res.status(404).json({
+                    error: 'Student not found',
+                    message: 'Студент с таким ФИО не найден. Обратитесь к администратору для добавления.'
+                });
+            }
 
-        // Создание JWT токена
-        const token = jwt.sign(
-            { userId: user.id, username: user.username },
-            process.env.JWT_SECRET || 'your-super-secret-jwt-key',
-            { expiresIn: '24h' }
-        );
+            const student = existingStudent.rows[0];
 
-        res.status(201).json({
-            message: 'Пользователь успешно зарегистрирован',
-            user: {
-                id: user.id,
-                username: user.username,
-                fullName: user.full_name,
-                role: role,
-                createdAt: user.created_at
-            },
-            token
-        });
+            // Проверяем, что студент еще не привязан к пользователю
+            if (student.user_id) {
+                return res.status(400).json({
+                    error: 'Student already registered',
+                    message: 'Студент с таким ФИО уже зарегистрирован'
+                });
+            }
+
+            // Хеширование пароля
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+            // Создание пользователя
+            const newUser = await query(
+                `INSERT INTO users (username, password_hash, full_name, role_id) 
+                 VALUES ($1, $2, $3, $4) 
+                 RETURNING id, username, full_name, role_id, created_at`,
+                [username, hashedPassword, fullName, roleId]
+            );
+
+            const user = newUser.rows[0];
+
+            // Связывание пользователя со студентом
+            await query(
+                'UPDATE students SET user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                [user.id, student.id]
+            );
+
+            // Создание JWT токена
+            const token = jwt.sign(
+                { userId: user.id, username: user.username },
+                process.env.JWT_SECRET || 'your-super-secret-jwt-key',
+                { expiresIn: '24h' }
+            );
+
+            res.status(201).json({
+                message: 'Пользователь успешно зарегистрирован',
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    fullName: user.full_name,
+                    role: role,
+                    createdAt: user.created_at
+                },
+                token
+            });
+
+        } else if (role === 'teacher') {
+            // Проверяем, что преподаватель с таким ФИО существует в таблице teachers
+            const existingTeacher = await query(
+                'SELECT id, user_id FROM teachers WHERE full_name = $1',
+                [fullName]
+            );
+
+            if (existingTeacher.rows.length === 0) {
+                return res.status(404).json({
+                    error: 'Teacher not found',
+                    message: 'Преподаватель с таким ФИО не найден. Обратитесь к администратору для добавления.'
+                });
+            }
+
+            const teacher = existingTeacher.rows[0];
+
+            // Проверяем, что преподаватель еще не привязан к пользователю
+            if (teacher.user_id) {
+                return res.status(400).json({
+                    error: 'Teacher already registered',
+                    message: 'Преподаватель с таким ФИО уже зарегистрирован'
+                });
+            }
+
+            // Хеширование пароля
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+            // Создание пользователя
+            const newUser = await query(
+                `INSERT INTO users (username, password_hash, full_name, role_id) 
+                 VALUES ($1, $2, $3, $4) 
+                 RETURNING id, username, full_name, role_id, created_at`,
+                [username, hashedPassword, fullName, roleId]
+            );
+
+            const user = newUser.rows[0];
+
+            // Связывание пользователя с преподавателем
+            await query(
+                'UPDATE teachers SET user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+                [user.id, teacher.id]
+            );
+
+            // Создание JWT токена
+            const token = jwt.sign(
+                { userId: user.id, username: user.username },
+                process.env.JWT_SECRET || 'your-super-secret-jwt-key',
+                { expiresIn: '24h' }
+            );
+
+            res.status(201).json({
+                message: 'Преподаватель успешно зарегистрирован',
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    fullName: user.full_name,
+                    role: 'teacher',
+                    createdAt: user.created_at
+                },
+                token
+            });
+        }
 
     } catch (error) {
         console.error('Registration error:', error);
@@ -144,6 +239,14 @@ router.post('/login', [
         }
 
         const user = userResult.rows[0];
+
+        // Проверка, что пароль установлен
+        if (!user.password_hash || user.password_hash.trim() === '') {
+            return res.status(401).json({
+                error: 'Password not set',
+                message: 'Пароль не установлен. Пожалуйста, зарегистрируйтесь сначала.'
+            });
+        }
 
         // Проверка пароля
         const isPasswordValid = await bcrypt.compare(password, user.password_hash);

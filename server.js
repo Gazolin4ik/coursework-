@@ -5,6 +5,8 @@ const authRoutes = require('./server/routes/auth');
 const studentRoutes = require('./server/routes/students');
 const gradeRoutes = require('./server/routes/grades');
 const predictionRoutes = require('./server/routes/predictions');
+const adminRoutes = require('./server/routes/admin');
+const groupsRoutes = require('./server/routes/groups');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -49,6 +51,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/grades', gradeRoutes);
 app.use('/api/predictions', predictionRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/groups', groupsRoutes);
 
 // Проверка здоровья сервера
 app.get('/api/health', (req, res) => {

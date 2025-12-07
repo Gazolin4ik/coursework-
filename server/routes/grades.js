@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../utils/database');
 const { authenticateToken, requireTeacher, canViewStudent } = require('../middleware/auth');
+const { calculateAndSavePrediction } = require('../utils/predictionCalculator');
 
 const router = express.Router();
 
@@ -67,10 +68,11 @@ router.post('/exam', authenticateToken, requireTeacher, [
         }
 
         const { studentId, examId, grade } = req.body;
+        const teacherId = req.user.id;
 
-        // Проверка существования студента
+        // Проверка существования студента и его группы
         const studentResult = await query(
-            'SELECT id FROM students WHERE id = $1',
+            'SELECT id, group_id FROM students WHERE id = $1',
             [studentId]
         );
 
@@ -81,16 +83,48 @@ router.post('/exam', authenticateToken, requireTeacher, [
             });
         }
 
-        // Проверка существования экзамена
-        const examResult = await query(
-            'SELECT id FROM exams WHERE id = $1',
-            [examId]
+        const studentGroupId = studentResult.rows[0].group_id;
+
+        // Получение teachers.id по user_id преподавателя
+        const teacherRecord = await query(
+            'SELECT id FROM teachers WHERE user_id = $1',
+            [teacherId]
         );
 
-        if (examResult.rows.length === 0) {
-            return res.status(400).json({
-                error: 'Exam not found',
-                message: 'Экзамен не найден'
+        if (teacherRecord.rows.length === 0) {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Преподаватель не найден'
+            });
+        }
+
+        const teacherTableId = teacherRecord.rows[0].id;
+
+        // Проверка, что группа закреплена за преподавателем
+        const groupCheck = await query(
+            'SELECT id FROM teacher_groups WHERE teacher_id = $1 AND group_id = $2',
+            [teacherTableId, studentGroupId]
+        );
+
+        if (groupCheck.rows.length === 0) {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Группа студента не закреплена за вами'
+            });
+        }
+
+        // Проверка существования экзамена и что он закреплен за преподавателем
+        const examCheck = await query(
+            `SELECT e.id FROM exams e
+             JOIN teacher_exams te ON e.id = te.exam_id
+             WHERE e.id = $1 AND te.teacher_id = $2`,
+            [examId, teacherTableId]
+        );
+
+        if (examCheck.rows.length === 0) {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Экзамен не закреплен за вами'
             });
         }
 
@@ -109,10 +143,10 @@ router.post('/exam', authenticateToken, requireTeacher, [
 
         // Добавление оценки
         const newGrade = await query(
-            `INSERT INTO exam_grades (student_id, exam_id, grade) 
-             VALUES ($1, $2, $3) 
-             RETURNING id, student_id, exam_id, grade, created_at`,
-            [studentId, examId, grade]
+            `INSERT INTO exam_grades (student_id, exam_id, grade, teacher_id) 
+             VALUES ($1, $2, $3, $4) 
+             RETURNING id, student_id, exam_id, grade, teacher_id, created_at`,
+            [studentId, examId, grade, teacherId]
         );
 
         // Получение информации об экзамене для ответа
@@ -120,6 +154,14 @@ router.post('/exam', authenticateToken, requireTeacher, [
             'SELECT exam_name FROM exams WHERE id = $1',
             [examId]
         );
+
+        // Автоматический расчет прогноза после добавления оценки
+        try {
+            await calculateAndSavePrediction(studentId);
+        } catch (predictionError) {
+            console.error('Error calculating prediction after adding exam grade:', predictionError);
+            // Не прерываем выполнение, просто логируем ошибку
+        }
 
         res.status(201).json({
             message: 'Оценка успешно добавлена',
@@ -189,6 +231,14 @@ router.put('/exam/:id', authenticateToken, requireTeacher, [
             [updateResult.rows[0].exam_id]
         );
 
+        // Автоматический расчет прогноза после обновления оценки
+        try {
+            await calculateAndSavePrediction(updateResult.rows[0].student_id);
+        } catch (predictionError) {
+            console.error('Error calculating prediction after updating exam grade:', predictionError);
+            // Не прерываем выполнение, просто логируем ошибку
+        }
+
         res.json({
             message: 'Оценка успешно обновлена',
             grade: {
@@ -233,10 +283,11 @@ router.post('/credit', authenticateToken, requireTeacher, [
         }
 
         const { studentId, creditId, isPassed } = req.body;
+        const teacherId = req.user.id;
 
-        // Проверка существования студента
+        // Проверка существования студента и его группы
         const studentResult = await query(
-            'SELECT id FROM students WHERE id = $1',
+            'SELECT id, group_id FROM students WHERE id = $1',
             [studentId]
         );
 
@@ -247,16 +298,48 @@ router.post('/credit', authenticateToken, requireTeacher, [
             });
         }
 
-        // Проверка существования зачета
-        const creditResult = await query(
-            'SELECT id FROM credits WHERE id = $1',
-            [creditId]
+        const studentGroupId = studentResult.rows[0].group_id;
+
+        // Получение teachers.id по user_id преподавателя
+        const teacherRecord = await query(
+            'SELECT id FROM teachers WHERE user_id = $1',
+            [teacherId]
         );
 
-        if (creditResult.rows.length === 0) {
-            return res.status(400).json({
-                error: 'Credit not found',
-                message: 'Зачет не найден'
+        if (teacherRecord.rows.length === 0) {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Преподаватель не найден'
+            });
+        }
+
+        const teacherTableId = teacherRecord.rows[0].id;
+
+        // Проверка, что группа закреплена за преподавателем
+        const groupCheck = await query(
+            'SELECT id FROM teacher_groups WHERE teacher_id = $1 AND group_id = $2',
+            [teacherTableId, studentGroupId]
+        );
+
+        if (groupCheck.rows.length === 0) {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Группа студента не закреплена за вами'
+            });
+        }
+
+        // Проверка существования зачета и что он закреплен за преподавателем
+        const creditCheck = await query(
+            `SELECT c.id FROM credits c
+             JOIN teacher_credits tc ON c.id = tc.credit_id
+             WHERE c.id = $1 AND tc.teacher_id = $2`,
+            [creditId, teacherTableId]
+        );
+
+        if (creditCheck.rows.length === 0) {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Зачет не закреплен за вами'
             });
         }
 
@@ -275,10 +358,10 @@ router.post('/credit', authenticateToken, requireTeacher, [
 
         // Добавление результата
         const newResult = await query(
-            `INSERT INTO credit_results (student_id, credit_id, is_passed) 
-             VALUES ($1, $2, $3) 
-             RETURNING id, student_id, credit_id, is_passed, created_at`,
-            [studentId, creditId, isPassed]
+            `INSERT INTO credit_results (student_id, credit_id, is_passed, teacher_id) 
+             VALUES ($1, $2, $3, $4) 
+             RETURNING id, student_id, credit_id, is_passed, teacher_id, created_at`,
+            [studentId, creditId, isPassed, teacherId]
         );
 
         // Получение информации о зачете для ответа
@@ -286,6 +369,14 @@ router.post('/credit', authenticateToken, requireTeacher, [
             'SELECT credit_name FROM credits WHERE id = $1',
             [creditId]
         );
+
+        // Автоматический расчет прогноза после добавления результата зачета
+        try {
+            await calculateAndSavePrediction(studentId);
+        } catch (predictionError) {
+            console.error('Error calculating prediction after adding credit result:', predictionError);
+            // Не прерываем выполнение, просто логируем ошибку
+        }
 
         res.status(201).json({
             message: 'Результат зачета успешно добавлен',
@@ -355,6 +446,14 @@ router.put('/credit/:id', authenticateToken, requireTeacher, [
             [updateResult.rows[0].credit_id]
         );
 
+        // Автоматический расчет прогноза после обновления результата зачета
+        try {
+            await calculateAndSavePrediction(updateResult.rows[0].student_id);
+        } catch (predictionError) {
+            console.error('Error calculating prediction after updating credit result:', predictionError);
+            // Не прерываем выполнение, просто логируем ошибку
+        }
+
         res.json({
             message: 'Результат зачета успешно обновлен',
             creditResult: {
@@ -376,13 +475,43 @@ router.put('/credit/:id', authenticateToken, requireTeacher, [
     }
 });
 
-// Получение списка экзаменов
+// Получение списка экзаменов (для преподавателей - только закрепленные, для админов - все)
 router.get('/exams/list', authenticateToken, async (req, res) => {
     try {
-        const examsResult = await query(
-            'SELECT id, exam_name FROM exams ORDER BY exam_name',
-            []
-        );
+        let examsResult;
+        
+        if (req.user.role_name === 'admin') {
+            // Администратор видит все экзамены
+            examsResult = await query(
+                'SELECT id, exam_name FROM exams ORDER BY exam_name',
+                []
+            );
+        } else if (req.user.role_name === 'teacher') {
+            // Преподаватель видит только закрепленные за ним экзамены
+            // Получаем teachers.id по user_id
+            const teacherRecord = await query(
+                'SELECT id FROM teachers WHERE user_id = $1',
+                [req.user.id]
+            );
+
+            if (teacherRecord.rows.length === 0) {
+                return res.json({ exams: [] });
+            }
+
+            examsResult = await query(
+                `SELECT e.id, e.exam_name 
+                 FROM exams e
+                 JOIN teacher_exams te ON e.id = te.exam_id
+                 WHERE te.teacher_id = $1
+                 ORDER BY e.exam_name`,
+                [teacherRecord.rows[0].id]
+            );
+        } else {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Доступ запрещен'
+            });
+        }
 
         res.json({
             exams: examsResult.rows
@@ -397,13 +526,43 @@ router.get('/exams/list', authenticateToken, async (req, res) => {
     }
 });
 
-// Получение списка зачетов
+// Получение списка зачетов (для преподавателей - только закрепленные, для админов - все)
 router.get('/credits/list', authenticateToken, async (req, res) => {
     try {
-        const creditsResult = await query(
-            'SELECT id, credit_name FROM credits ORDER BY credit_name',
-            []
-        );
+        let creditsResult;
+        
+        if (req.user.role_name === 'admin') {
+            // Администратор видит все зачеты
+            creditsResult = await query(
+                'SELECT id, credit_name FROM credits ORDER BY credit_name',
+                []
+            );
+        } else if (req.user.role_name === 'teacher') {
+            // Преподаватель видит только закрепленные за ним зачеты
+            // Получаем teachers.id по user_id
+            const teacherRecord = await query(
+                'SELECT id FROM teachers WHERE user_id = $1',
+                [req.user.id]
+            );
+
+            if (teacherRecord.rows.length === 0) {
+                return res.json({ credits: [] });
+            }
+
+            creditsResult = await query(
+                `SELECT c.id, c.credit_name 
+                 FROM credits c
+                 JOIN teacher_credits tc ON c.id = tc.credit_id
+                 WHERE tc.teacher_id = $1
+                 ORDER BY c.credit_name`,
+                [teacherRecord.rows[0].id]
+            );
+        } else {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Доступ запрещен'
+            });
+        }
 
         res.json({
             credits: creditsResult.rows

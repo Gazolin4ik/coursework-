@@ -9,6 +9,12 @@ import Students from './pages/Students';
 import StudentDetail from './pages/StudentDetail';
 import Predictions from './pages/Predictions';
 import Profile from './pages/Profile';
+import AdminGroups from './pages/AdminGroups';
+import AdminDisciplines from './pages/AdminDisciplines';
+import AdminTeachers from './pages/AdminTeachers';
+import Groups from './pages/Groups';
+import GroupDisciplines from './pages/GroupDisciplines';
+import GroupStudents from './pages/GroupStudents';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
@@ -36,8 +42,15 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="students" element={<Students />} />
               <Route path="students/:id" element={<StudentDetail />} />
+              <Route path="groups" element={<Groups />} />
+              <Route path="groups/:groupId/disciplines" element={<GroupDisciplines />} />
+              <Route path="groups/:groupId/disciplines/:disciplineType/:disciplineId/students" element={<GroupStudents />} />
               <Route path="predictions" element={<Predictions />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="admin/groups" element={<AdminGroups />} />
+              <Route path="admin/disciplines" element={<AdminDisciplines />} />
+              <Route path="admin/teachers" element={<AdminTeachers />} />
+              <Route path="admin/students" element={<Students />} />
             </Route>
           </Routes>
         </div>

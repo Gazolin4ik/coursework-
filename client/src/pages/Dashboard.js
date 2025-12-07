@@ -7,13 +7,14 @@ import {
   BarChart3, 
   Plus,
   Eye,
-  Calculator
+  Calculator,
+  GraduationCap
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../services/authService';
 
 const Dashboard = () => {
-  const { user, isTeacher, isStudent } = useAuth();
+  const { user, isTeacher, isStudent, isAdmin } = useAuth();
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalPredictions: 0,
@@ -73,24 +74,40 @@ const Dashboard = () => {
   }, [isTeacher, isStudent]);
 
   const quickActions = [
-    ...(isTeacher ? [
+    ...(isAdmin ? [
       {
-        title: 'Добавить студента',
-        description: 'Создать нового студента в системе',
-        icon: Plus,
-        href: '/students',
+        title: 'Управление группами',
+        description: 'Добавление и редактирование групп студентов',
+        icon: Users,
+        href: '/admin/groups',
         color: 'bg-blue-500'
       },
       {
-        title: 'Просмотреть студентов',
-        description: 'Управление списком студентов',
-        icon: Users,
-        href: '/students',
+        title: 'Управление дисциплинами',
+        description: 'Добавление экзаменов и зачетов',
+        icon: BookOpen,
+        href: '/admin/disciplines',
         color: 'bg-green-500'
       },
       {
-        title: 'Рассчитать прогнозы',
-        description: 'Создать прогнозы успеваемости',
+        title: 'Управление преподавателями',
+        description: 'Добавление преподавателей и закрепление дисциплин',
+        icon: GraduationCap,
+        href: '/admin/teachers',
+        color: 'bg-purple-500'
+      }
+    ] : []),
+    ...(isTeacher ? [
+      {
+        title: 'Группы',
+        description: 'Выбор группы и дисциплины для проставления оценок',
+        icon: Users,
+        href: '/groups',
+        color: 'bg-blue-500'
+      },
+      {
+        title: 'Прогнозы',
+        description: 'Просмотр и управление прогнозами успеваемости',
         icon: Calculator,
         href: '/predictions',
         color: 'bg-purple-500'
@@ -141,62 +158,13 @@ const Dashboard = () => {
           Добро пожаловать, {user?.fullName}!
         </h1>
         <p className="text-gray-600 mt-2">
-          {isTeacher 
+          {isAdmin
+            ? 'Панель администратора системы прогнозирования успеваемости студентов'
+            : isTeacher 
             ? 'Панель управления системой прогнозирования успеваемости студентов'
             : 'Ваша персональная панель успеваемости'
           }
         </p>
-      </div>
-
-      {/* Статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">
-                {isTeacher ? 'Всего студентов' : 'Мои данные'}
-              </p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {stats.totalStudents}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <TrendingUp className="h-8 w-8 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">
-                {isTeacher ? 'Прогнозов создано' : 'Мой прогноз'}
-              </p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {stats.totalPredictions}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <BarChart3 className="h-8 w-8 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">
-                {isTeacher ? 'Средний балл' : 'Мой балл'}
-              </p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {averageScoreText}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Быстрые действия */}
@@ -254,7 +222,9 @@ const Dashboard = () => {
             <div className="mt-2 text-sm text-blue-700">
               <p>
                 Система анализирует оценки по экзаменам и результаты зачетов для создания 
-                прогноза успеваемости студентов. {isTeacher 
+                прогноза успеваемости студентов. {isAdmin
+                  ? 'Вы можете управлять группами, дисциплинами, преподавателями и студентами.'
+                  : isTeacher 
                   ? 'Вы можете добавлять данные студентов и рассчитывать прогнозы.' 
                   : 'Вы можете просматривать свои результаты и прогнозы успеваемости.'
                 }

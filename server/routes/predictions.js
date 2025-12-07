@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../utils/database');
 const { authenticateToken, requireTeacher, canViewStudent } = require('../middleware/auth');
+const { calculateAndSavePrediction } = require('../utils/predictionCalculator');
 
 const router = express.Router();
 
@@ -59,81 +60,19 @@ router.post('/calculate/:studentId', authenticateToken, requireTeacher, async (r
             });
         }
 
-        // Получение оценок по экзаменам
-        const examGradesResult = await query(
-            `SELECT eg.grade
-             FROM exam_grades eg
-             WHERE eg.student_id = $1`,
-            [studentId]
-        );
+        // Используем функцию автоматического расчета прогноза
+        const prediction = await calculateAndSavePrediction(studentId);
 
-        // Получение результатов зачетов
-        const creditResultsResult = await query(
-            `SELECT cr.is_passed
-             FROM credit_results cr
-             WHERE cr.student_id = $1`,
-            [studentId]
-        );
-
-        // Проверка наличия данных для прогноза
-        if (examGradesResult.rows.length === 0 && creditResultsResult.rows.length === 0) {
+        if (!prediction) {
             return res.status(400).json({
                 error: 'Insufficient data',
                 message: 'Недостаточно данных для расчета прогноза'
             });
         }
 
-        // Расчет прогноза
-        let predictedExamGrade = null;
-        let predictedCreditPassRate = null;
-        let overallPerformanceScore = null;
-
-        // Расчет средней оценки по экзаменам
-        if (examGradesResult.rows.length > 0) {
-            const totalGrade = examGradesResult.rows.reduce((sum, row) => sum + row.grade, 0);
-            predictedExamGrade = parseFloat((totalGrade / examGradesResult.rows.length).toFixed(2));
-        }
-
-        // Расчет процента сданных зачетов
-        if (creditResultsResult.rows.length > 0) {
-            const passedCredits = creditResultsResult.rows.filter(row => row.is_passed).length;
-            predictedCreditPassRate = parseFloat(((passedCredits / creditResultsResult.rows.length) * 100).toFixed(2));
-        }
-
-        // Расчет общего показателя успеваемости
-        if (predictedExamGrade !== null && predictedCreditPassRate !== null) {
-            // Взвешенная формула: 70% экзамены + 30% зачеты
-            const examWeight = 0.7;
-            const creditWeight = 0.3;
-            
-            // Нормализация оценки экзамена (2-5 -> 0-100)
-            const normalizedExamScore = ((predictedExamGrade - 2) / 3) * 100;
-            
-            overallPerformanceScore = parseFloat(
-                (normalizedExamScore * examWeight + predictedCreditPassRate * creditWeight).toFixed(2)
-            );
-        } else if (predictedExamGrade !== null) {
-            // Если есть только экзамены
-            const normalizedExamScore = ((predictedExamGrade - 2) / 3) * 100;
-            overallPerformanceScore = parseFloat(normalizedExamScore.toFixed(2));
-        } else if (predictedCreditPassRate !== null) {
-            // Если есть только зачеты
-            overallPerformanceScore = predictedCreditPassRate;
-        }
-
-        // Сохранение прогноза в базу данных
-        const newPrediction = await query(
-            `INSERT INTO performance_predictions 
-             (student_id, predicted_exam_grade, predicted_credit_pass_rate, overall_performance_score) 
-             VALUES ($1, $2, $3, $4) 
-             RETURNING id, predicted_exam_grade, predicted_credit_pass_rate, 
-                       overall_performance_score, prediction_date, created_at`,
-            [studentId, predictedExamGrade, predictedCreditPassRate, overallPerformanceScore]
-        );
-
         res.status(201).json({
             message: 'Прогноз успешно рассчитан',
-            prediction: newPrediction.rows[0]
+            prediction: prediction
         });
 
     } catch (error) {

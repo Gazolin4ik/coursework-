@@ -86,7 +86,7 @@ const Register = () => {
             Регистрация
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Создайте новый аккаунт в системе
+            Создайте аккаунт для уже добавленного администратором студента или преподавателя
           </p>
         </div>
         
@@ -106,22 +106,9 @@ const Register = () => {
                 value={formData.fullName}
                 onChange={handleChange}
               />
-            </div>
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Имя пользователя
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="username"
-                value={formData.username}
-                onChange={handleChange}
-              />
+              <p className="mt-1 text-xs text-gray-500">
+                Введите ФИО, которое указал администратор при добавлении
+              </p>
             </div>
 
             <div>
@@ -139,6 +126,22 @@ const Register = () => {
                 <option value="student">Студент</option>
                 <option value="teacher">Преподаватель</option>
               </select>
+            </div>
+
+            <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Имя пользователя
+              </label>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                required
+                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                placeholder="username"
+                value={formData.username}
+                onChange={handleChange}
+              />
             </div>
 
             <div>

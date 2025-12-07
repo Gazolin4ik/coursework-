@@ -99,7 +99,8 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     isAuthenticated: !!token,
     isTeacher: user?.role === 'teacher',
-    isStudent: user?.role === 'student'
+    isStudent: user?.role === 'student',
+    isAdmin: user?.role === 'admin'
   };
 
   return (

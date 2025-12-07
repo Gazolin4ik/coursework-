@@ -1,6 +1,7 @@
 -- Добавление тестовых пользователей
+-- Пароль для всех тестовых пользователей: password
 INSERT INTO users (username, password_hash, full_name, role_id) VALUES 
-    ('admin', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Админ Админов Админович', 2),
+    ('admin', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Админ Админов Админович', 3),
     ('teacher1', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Преподаватель Преподавателев', 2),
     ('student1', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Студент Студентов Студентович', 1),
     ('student2', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Иванов Иван Иванович', 1),

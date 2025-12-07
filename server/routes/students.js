@@ -1,7 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const { query } = require('../utils/database');
-const { authenticateToken, requireTeacher, canViewStudent } = require('../middleware/auth');
+const { authenticateToken, requireTeacher, requireAdmin, canViewStudent } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -50,8 +50,15 @@ router.get('/me', authenticateToken, async (req, res) => {
     }
 });
 
-// Получение списка всех студентов (только для преподавателей)
-router.get('/', authenticateToken, requireTeacher, async (req, res) => {
+// Получение списка всех студентов (для преподавателей - только из закрепленных групп, для администраторов - все)
+router.get('/', authenticateToken, async (req, res) => {
+    // Проверка роли
+    if (req.user.role_name !== 'teacher' && req.user.role_name !== 'admin') {
+        return res.status(403).json({
+            error: 'Access denied',
+            message: 'Доступ запрещен'
+        });
+    }
     try {
         const { group, search } = req.query;
         
@@ -68,6 +75,24 @@ router.get('/', authenticateToken, requireTeacher, async (req, res) => {
         const whereConditions = [];
         const queryParams = [];
         let paramIndex = 1;
+
+        // Для преподавателей - только студенты из закрепленных групп
+        if (req.user.role_name === 'teacher') {
+            // Получаем teachers.id по user_id
+            const teacherRecord = await query(
+                'SELECT id FROM teachers WHERE user_id = $1',
+                [req.user.id]
+            );
+
+            if (teacherRecord.rows.length === 0) {
+                return res.json({ students: [], total: 0 });
+            }
+
+            whereConditions.push(`g.id IN (
+                SELECT group_id FROM teacher_groups WHERE teacher_id = $${paramIndex++}
+            )`);
+            queryParams.push(teacherRecord.rows[0].id);
+        }
 
         if (group) {
             whereConditions.push(`g.group_name = $${paramIndex++}`);
@@ -178,8 +203,8 @@ router.get('/:id', authenticateToken, canViewStudent, async (req, res) => {
     }
 });
 
-// Добавление нового студента (только для преподавателей)
-router.post('/', authenticateToken, requireTeacher, [
+// Добавление нового студента (только для администраторов)
+router.post('/', authenticateToken, requireAdmin, [
     body('fullName')
         .isLength({ min: 2, max: 100 })
         .withMessage('ФИО должно быть от 2 до 100 символов'),
@@ -279,8 +304,8 @@ router.post('/', authenticateToken, requireTeacher, [
     }
 });
 
-// Обновление данных студента (только для преподавателей)
-router.put('/:id', authenticateToken, requireTeacher, [
+// Обновление данных студента (только для администраторов)
+router.put('/:id', authenticateToken, requireAdmin, [
     body('fullName')
         .optional()
         .isLength({ min: 2, max: 100 })
@@ -388,8 +413,8 @@ router.put('/:id', authenticateToken, requireTeacher, [
     }
 });
 
-// Удаление студента (только для преподавателей)
-router.delete('/:id', authenticateToken, requireTeacher, async (req, res) => {
+// Удаление студента (только для администраторов)
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const studentId = req.params.id;
 
@@ -427,13 +452,33 @@ router.delete('/:id', authenticateToken, requireTeacher, async (req, res) => {
     }
 });
 
-// Получение списка групп
+// Получение списка групп (для преподавателей - только закрепленные, для админов - все)
 router.get('/groups/list', authenticateToken, async (req, res) => {
     try {
-        const groupsResult = await query(
-            'SELECT id, group_name FROM groups ORDER BY group_name',
-            []
-        );
+        let groupsResult;
+        
+        if (req.user.role_name === 'admin') {
+            // Администратор видит все группы
+            groupsResult = await query(
+                'SELECT id, group_name FROM groups ORDER BY group_name',
+                []
+            );
+        } else if (req.user.role_name === 'teacher') {
+            // Преподаватель видит только закрепленные за ним группы
+            groupsResult = await query(
+                `SELECT g.id, g.group_name 
+                 FROM groups g
+                 JOIN teacher_groups tg ON g.id = tg.group_id
+                 WHERE tg.teacher_id = $1
+                 ORDER BY g.group_name`,
+                [req.user.id]
+            );
+        } else {
+            return res.status(403).json({
+                error: 'Access denied',
+                message: 'Доступ запрещен'
+            });
+        }
 
         res.json({
             groups: groupsResult.rows

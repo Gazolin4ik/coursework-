@@ -134,7 +134,13 @@ const Profile = () => {
                 </label>
                 <input
                   type="text"
-                  value={user?.role === 'teacher' ? 'Преподаватель' : 'Студент'}
+                  value={
+                    user?.role === 'admin' 
+                      ? 'Администратор' 
+                      : user?.role === 'teacher' 
+                      ? 'Преподаватель' 
+                      : 'Студент'
+                  }
                   disabled
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
                 />

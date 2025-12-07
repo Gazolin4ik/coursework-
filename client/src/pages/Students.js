@@ -7,14 +7,17 @@ import {
   Trash2, 
   Eye,
   Filter,
-  Users
+  Users,
+  BookOpen,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../services/authService';
 import toast from 'react-hot-toast';
 
 const Students = () => {
-  const { isTeacher, isStudent } = useAuth();
+  const { isTeacher, isStudent, isAdmin } = useAuth();
   const [students, setStudents] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +32,12 @@ const Students = () => {
     groupId: '',
     userId: ''
   });
+  // Для студентов: оценки и зачеты
+  const [examGrades, setExamGrades] = useState([]);
+  const [creditResults, setCreditResults] = useState([]);
+  const [studentId, setStudentId] = useState(null);
+  const [studentGroup, setStudentGroup] = useState('');
+  const [disciplineType, setDisciplineType] = useState('exam'); // 'exam' or 'credit'
 
   useEffect(() => {
     fetchStudents();
@@ -37,21 +46,30 @@ const Students = () => {
 
   const fetchStudents = async () => {
     try {
-      if (isTeacher) {
+      if (isTeacher || isAdmin) {
         const response = await api.get('/students');
         setStudents(response.data.students || []);
       } else if (isStudent) {
+        // Для студентов получаем их оценки и зачеты, НЕ загружаем данные в students
+        setStudents([]); // Явно очищаем массив студентов
         const profileRes = await api.get('/auth/profile');
         const me = profileRes.data.user?.studentInfo;
         if (me) {
-          setStudents([{ id: me.id, full_name: me.full_name, group_name: me.group_name, created_at: me.created_at || new Date().toISOString() }]);
+          setStudentId(me.id);
+          setStudentGroup(me.group_name || '');
+          // Загружаем оценки и зачеты
+          const gradesRes = await api.get(`/grades/student/${me.id}`);
+          setExamGrades(gradesRes.data.examGrades || []);
+          setCreditResults(gradesRes.data.creditResults || []);
         } else {
-          setStudents([]);
+          setExamGrades([]);
+          setCreditResults([]);
+          setStudentGroup('');
         }
       }
     } catch (error) {
       console.error('Error fetching students:', error);
-      toast.error('Ошибка при загрузке студентов');
+      toast.error('Ошибка при загрузке данных');
     } finally {
       setLoading(false);
     }
@@ -59,7 +77,7 @@ const Students = () => {
 
   const fetchGroups = async () => {
     try {
-      if (isTeacher) {
+      if (isTeacher || isAdmin) {
         const response = await api.get('/students/groups/list');
         setGroups(response.data.groups || []);
       }
@@ -139,12 +157,12 @@ const Students = () => {
     }
   };
 
-  const filteredStudents = students.filter(student => {
+  const filteredStudents = (isTeacher || isAdmin) ? students.filter(student => {
     const matchesSearch = student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.group_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGroup = !selectedGroup || student.group_name === selectedGroup;
     return matchesSearch && matchesGroup;
-  });
+  }) : [];
 
   if (loading) {
     return (
@@ -160,16 +178,18 @@ const Students = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isTeacher ? 'Управление студентами' : 'Мои результаты'}
+            {isAdmin ? 'Управление студентами' : isTeacher ? 'Управление студентами' : 'Мои результаты'}
           </h1>
           <p className="text-gray-600 mt-1">
-            {isTeacher 
+            {isAdmin || isTeacher
               ? 'Добавление, редактирование и просмотр данных студентов'
+              : isStudent && studentGroup
+              ? `Группа: ${studentGroup}`
               : 'Просмотр ваших оценок и результатов'
             }
           </p>
         </div>
-        {isTeacher && (
+        {(isTeacher || isAdmin) && (
           <button
             onClick={() => setShowAddModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -181,7 +201,7 @@ const Students = () => {
       </div>
 
       {/* Фильтры */}
-      {isTeacher && (
+      {(isTeacher || isAdmin) && (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -223,106 +243,271 @@ const Students = () => {
       </div>
       )}
 
-      {/* Таблица студентов */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">
-            {isTeacher ? `Студенты (${filteredStudents.length})` : 'Мои данные'}
-          </h3>
+      {/* Для студентов: показываем ТОЛЬКО оценки и зачеты, БЕЗ таблицы с данными */}
+      {isStudent ? (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Переключатель между экзаменами и зачетами */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                {disciplineType === 'exam' ? (
+                  <BookOpen className="h-5 w-5 text-blue-600 mr-2" />
+                ) : (
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                )}
+                <h3 className="text-lg font-medium text-gray-900">
+                  {disciplineType === 'exam' ? 'Экзамены' : 'Зачеты'}
+                </h3>
+              </div>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setDisciplineType('exam')}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  disciplineType === 'exam'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Экзамены
+              </button>
+              <button
+                onClick={() => setDisciplineType('credit')}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  disciplineType === 'credit'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Зачеты
+              </button>
+            </div>
+          </div>
+
+          {/* Список экзаменов */}
+          {disciplineType === 'exam' ? (
+            examGrades.length === 0 ? (
+              <div className="text-center py-12">
+                <BookOpen className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  Нет оценок по экзаменам
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Оценки по экзаменам еще не проставлены
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Дисциплина
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Оценка
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Дата
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {examGrades.map((exam, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {exam.exam_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+                            exam.grade >= 4 ? 'bg-green-100 text-green-800' :
+                            exam.grade === 3 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {exam.grade}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(exam.created_at).toLocaleDateString('ru-RU')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          ) : (
+            /* Список зачетов */
+            creditResults.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">
+                  Нет результатов по зачетам
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Результаты по зачетам еще не проставлены
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Дисциплина
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Результат
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Дата
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {creditResults.map((credit, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {credit.credit_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-3 py-1 text-sm font-semibold rounded-full ${
+                            credit.is_passed 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {credit.is_passed ? (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Сдан
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Не сдан
+                              </>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(credit.created_at).toLocaleDateString('ru-RU')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
         </div>
-        
-        {filteredStudents.length === 0 ? (
-          <div className="text-center py-12">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">
-              {isTeacher ? 'Студенты не найдены' : 'Данные не найдены'}
+      ) : null}
+
+      {/* Для преподавателей и администраторов: таблица студентов - НЕ показывать для студентов! */}
+      {!isStudent && (isTeacher || isAdmin) && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+              Студенты ({filteredStudents.length})
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {isTeacher 
-                ? 'Попробуйте изменить параметры поиска или добавьте нового студента.'
-                : 'Обратитесь к преподавателю для добавления ваших данных.'
-              }
-            </p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ФИО
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Группа
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Дата добавления
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {student.full_name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {student.group_name}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(student.created_at).toLocaleDateString('ru-RU')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <Link
-                          to={`/students/${student.id}`}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        {isTeacher && (
-                          <>
-                            <button
-                              onClick={() => {
-                                setSelectedStudent(student);
-                                setFormData({
-                                  fullName: student.full_name,
-                                  groupId: student.group_id,
-                                  userId: ''
-                                });
-                                setShowEditModal(true);
-                              }}
-                              className="text-indigo-600 hover:text-indigo-900"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedStudent(student);
-                                setShowDeleteModal(true);
-                              }}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+          
+          {filteredStudents.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                {isTeacher ? 'Студенты не найдены' : 'Данные не найдены'}
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {isTeacher 
+                  ? 'Попробуйте изменить параметры поиска или добавьте нового студента.'
+                  : 'Обратитесь к преподавателю для добавления ваших данных.'
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      ФИО
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Группа
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Дата добавления
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Действия
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredStudents.map((student) => (
+                    <tr key={student.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {student.full_name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          {student.group_name}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(student.created_at).toLocaleDateString('ru-RU')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <Link
+                            to={`/students/${student.id}`}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                          {(isTeacher || isAdmin) && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedStudent(student);
+                                  setFormData({
+                                    fullName: student.full_name,
+                                    groupId: student.group_id,
+                                    userId: ''
+                                  });
+                                  setShowEditModal(true);
+                                }}
+                                className="text-indigo-600 hover:text-indigo-900"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedStudent(student);
+                                  setShowDeleteModal(true);
+                                }}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Модальное окно добавления студента */}
       {showAddModal && (

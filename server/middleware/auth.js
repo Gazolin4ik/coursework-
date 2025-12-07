@@ -81,6 +81,25 @@ const requireStudent = (req, res, next) => {
     next();
 };
 
+// Middleware для проверки роли администратора
+const requireAdmin = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ 
+            error: 'Authentication required',
+            message: 'Требуется аутентификация' 
+        });
+    }
+
+    if (req.user.role_name !== 'admin') {
+        return res.status(403).json({ 
+            error: 'Admin access required',
+            message: 'Доступ только для администраторов' 
+        });
+    }
+
+    next();
+};
+
 // Middleware для проверки, что пользователь может просматривать данные студента
 const canViewStudent = async (req, res, next) => {
     if (!req.user) {
@@ -135,5 +154,6 @@ module.exports = {
     authenticateToken,
     requireTeacher,
     requireStudent,
+    requireAdmin,
     canViewStudent
 }; 

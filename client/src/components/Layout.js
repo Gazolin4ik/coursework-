@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 const Layout = () => {
-  const { user, logout, isTeacher, isStudent } = useAuth();
+  const { user, logout, isTeacher, isStudent, isAdmin } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -27,8 +27,14 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Главная страница', href: '/dashboard', icon: Home },
+    ...(isAdmin ? [
+      { name: 'Группы', href: '/admin/groups', icon: Users },
+      { name: 'Дисциплины', href: '/admin/disciplines', icon: BookOpen },
+      { name: 'Преподаватели', href: '/admin/teachers', icon: Users },
+      { name: 'Студенты', href: '/admin/students', icon: GraduationCap },
+    ] : []),
     ...(isTeacher ? [
-      { name: 'Студенты', href: '/students', icon: Users },
+      { name: 'Группы', href: '/groups', icon: Users },
       { name: 'Прогнозы', href: '/predictions', icon: TrendingUp },
     ] : []),
     ...(isStudent ? [
@@ -146,7 +152,10 @@ const Layout = () => {
               <div className="flex items-center space-x-4">
                 <div className="text-sm text-gray-700">
                   <div className="font-medium">{user?.fullName}</div>
-                  <div className="text-gray-500 capitalize">{user?.role === 'teacher' ? 'Преподаватель' : 'Студент'}</div>
+                  <div className="text-gray-500 capitalize">
+                    {user?.role === 'admin' ? 'Администратор' : 
+                     user?.role === 'teacher' ? 'Преподаватель' : 'Студент'}
+                  </div>
                 </div>
                 <button
                   onClick={handleLogout}
