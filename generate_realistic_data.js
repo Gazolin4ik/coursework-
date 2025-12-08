@@ -299,32 +299,20 @@ async function generateRealisticData() {
             );
             const teacherId = teacherResult.rows[0].id;
 
-            // Для первых 5 преподавателей прикрепляем зачеты (каждому свой)
-            if (i < 5 && credits.length > i) {
-                const credit = credits[i];
+            // Прикрепление одной дисциплины (каждому преподавателю разная)
+            const discipline = allDisciplines[i % allDisciplines.length];
+            if (exams.find(e => e.id === discipline.id)) {
+                // Это экзамен
+                await client.query(
+                    'INSERT INTO teacher_exams (teacher_id, exam_id) VALUES ($1, $2)',
+                    [teacherId, discipline.id]
+                );
+            } else {
+                // Это зачет
                 await client.query(
                     'INSERT INTO teacher_credits (teacher_id, credit_id) VALUES ($1, $2)',
-                    [teacherId, credit.id]
+                    [teacherId, discipline.id]
                 );
-                console.log(`   ✅ ${fullName} - зачет: ${credit.credit_name}`);
-            } else {
-                // Для остальных преподавателей прикрепляем дисциплины как раньше
-                const discipline = allDisciplines[i % allDisciplines.length];
-                if (exams.find(e => e.id === discipline.id)) {
-                    // Это экзамен
-                    await client.query(
-                        'INSERT INTO teacher_exams (teacher_id, exam_id) VALUES ($1, $2)',
-                        [teacherId, discipline.id]
-                    );
-                } else {
-                    // Это зачет
-                    await client.query(
-                        'INSERT INTO teacher_credits (teacher_id, credit_id) VALUES ($1, $2)',
-                        [teacherId, discipline.id]
-                    );
-                }
-                const disciplineName = discipline.exam_name || discipline.credit_name;
-                console.log(`   ✅ ${fullName} - ${disciplineName}`);
             }
 
             // Прикрепление всех групп к преподавателю
@@ -335,10 +323,6 @@ async function generateRealisticData() {
                 );
             }
 
-            // Сохраняем информацию о преподавателе
-            const discipline = i < 5 && credits.length > i 
-                ? credits[i] 
-                : allDisciplines[i % allDisciplines.length];
             const disciplineName = discipline.exam_name || discipline.credit_name;
             teachers.push({
                 id: teacherId,
@@ -348,6 +332,7 @@ async function generateRealisticData() {
                 disciplineType: exams.find(e => e.id === discipline.id) ? 'exam' : 'credit',
                 disciplineName: disciplineName
             });
+            console.log(`   ✅ ${fullName} - ${disciplineName}`);
         }
         console.log(`✅ Всего преподавателей создано: ${teachers.length}\n`);
 
@@ -384,10 +369,9 @@ async function generateRealisticData() {
                 }
             }
 
-            // Результаты зачетов (проставляем для всех студентов)
+            // Результаты зачетов
             for (const credit of credits) {
-                // Увеличиваем вероятность проставления зачета до 90%
-                if (Math.random() > 0.1) {
+                if (Math.random() > 0.3) { // 70% вероятность получить результат
                     const isPassed = getRandomBoolean(0.85); // 85% вероятность сдать
                     
                     // Находим преподавателя, который ведет этот зачет
