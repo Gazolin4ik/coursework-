@@ -24,7 +24,7 @@ async function setupDatabase() {
         
         console.log('Выполнение SQL-скрипта для создания таблиц...');
         try {
-            await client.query(sqlScript);
+        await client.query(sqlScript);
         } catch (error) {
             // Игнорируем ошибки о существующих объектах (таблицы, триггеры и т.д.)
             if (error.code === '42P07' || error.code === '42710' || error.code === '42P16') {
