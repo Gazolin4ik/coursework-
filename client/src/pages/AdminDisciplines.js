@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, BookOpen, CheckCircle, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, BookOpen, CheckCircle, Search, CheckSquare, Square } from 'lucide-react';
 import api from '../services/authService';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,7 @@ const AdminDisciplines = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState({ name: '' });
+  const [selectedItems, setSelectedItems] = useState(new Set());
 
   useEffect(() => {
     fetchData();
@@ -90,6 +91,60 @@ const AdminDisciplines = () => {
       toast.success(`${activeTab === 'exams' ? 'Экзамен' : 'Зачет'} успешно удален`);
       setShowDeleteModal(false);
       setSelectedItem(null);
+      setSelectedItems(new Set());
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Ошибка при удалении');
+    }
+  };
+
+  const toggleItemSelection = (itemId) => {
+    setSelectedItems(prevSelected => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(itemId)) {
+        newSelected.delete(itemId);
+      } else {
+        newSelected.add(itemId);
+      }
+      return newSelected;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const allSelected = filteredItems.every(item => selectedItems.has(item.id));
+    
+    if (allSelected) {
+      setSelectedItems(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredItems.forEach(item => newSelected.delete(item.id));
+        return newSelected;
+      });
+    } else {
+      setSelectedItems(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredItems.forEach(item => newSelected.add(item.id));
+        return newSelected;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) {
+      toast.error('Выберите элементы для удаления');
+      return;
+    }
+
+    try {
+      const promises = Array.from(selectedItems).map(itemId => {
+        const endpoint = activeTab === 'exams' 
+          ? `/admin/exams/${itemId}` 
+          : `/admin/credits/${itemId}`;
+        return api.delete(endpoint);
+      });
+
+      await Promise.all(promises);
+      toast.success(`Успешно удалено элементов: ${selectedItems.size}`);
+      setSelectedItems(new Set());
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Ошибка при удалении');
@@ -147,6 +202,7 @@ const AdminDisciplines = () => {
             onClick={() => {
               setActiveTab('exams');
               setSearchTerm(''); // Сброс поиска при переключении
+              setSelectedItems(new Set()); // Сброс выбора при переключении
             }}
             className={`${
               activeTab === 'exams'
@@ -161,6 +217,7 @@ const AdminDisciplines = () => {
             onClick={() => {
               setActiveTab('credits');
               setSearchTerm(''); // Сброс поиска при переключении
+              setSelectedItems(new Set()); // Сброс выбора при переключении
             }}
             className={`${
               activeTab === 'credits'
@@ -176,10 +233,30 @@ const AdminDisciplines = () => {
 
       {/* Таблица */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">
             {activeTab === 'exams' ? 'Экзамены' : 'Зачеты'} ({filteredItems.length})
           </h3>
+          {selectedItems.size > 0 && (
+            <div className="flex items-center space-x-3">
+              <span className="text-sm text-gray-600">
+                Выбрано: <span className="font-semibold text-blue-600">{selectedItems.size}</span>
+              </span>
+              <button
+                onClick={toggleSelectAll}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                {filteredItems.every(item => selectedItems.has(item.id)) ? 'Снять выделение' : 'Выбрать все'}
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Удалить выбранные
+              </button>
+            </div>
+          )}
         </div>
         
         {filteredItems.length === 0 ? (
@@ -195,45 +272,64 @@ const AdminDisciplines = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12"></th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Название</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата создания</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{item[itemName]}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(item.created_at).toLocaleDateString('ru-RU')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                {filteredItems.map((item) => {
+                  const isSelected = selectedItems.has(item.id);
+                  return (
+                    <tr 
+                      key={item.id} 
+                      className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <button
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setFormData({ name: item[itemName] });
-                            setShowEditModal(true);
-                          }}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          onClick={() => toggleItemSelection(item.id)}
+                          className="cursor-pointer"
                         >
-                          <Edit className="h-4 w-4" />
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400" />
+                          )}
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedItem(item);
-                            setShowDeleteModal(true);
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{item[itemName]}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(item.created_at).toLocaleDateString('ru-RU')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedItem(item);
+                              setFormData({ name: item[itemName] });
+                              setShowEditModal(true);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedItem(item);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -18,6 +18,7 @@ const AdminTeachers = () => {
   const [teacherDisciplines, setTeacherDisciplines] = useState({ exams: [], credits: [] });
   const [teacherGroups, setTeacherGroups] = useState([]);
   const [loadingViewData, setLoadingViewData] = useState(false);
+  const [selectedTeachers, setSelectedTeachers] = useState(new Set());
   const [linkType, setLinkType] = useState('exam'); // 'exam', 'credit', 'group'
   const [formData, setFormData] = useState({ username: '', fullName: '' });
   const [editFormData, setEditFormData] = useState({ username: '', fullName: '' });
@@ -256,9 +257,64 @@ const AdminTeachers = () => {
     try {
       await api.delete(`/admin/teachers/${teacherId}`);
       toast.success('Преподаватель успешно удален');
+      setSelectedTeachers(new Set());
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Ошибка при удалении преподавателя');
+    }
+  };
+
+  const toggleTeacherSelection = (teacherId) => {
+    setSelectedTeachers(prevSelected => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(teacherId)) {
+        newSelected.delete(teacherId);
+      } else {
+        newSelected.add(teacherId);
+      }
+      return newSelected;
+    });
+  };
+
+  const toggleSelectAllTeachers = () => {
+    const filteredTeachers = teachers.filter(t => 
+      t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.username && t.username.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    const allSelected = filteredTeachers.every(teacher => selectedTeachers.has(teacher.id));
+    
+    if (allSelected) {
+      setSelectedTeachers(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredTeachers.forEach(teacher => newSelected.delete(teacher.id));
+        return newSelected;
+      });
+    } else {
+      setSelectedTeachers(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredTeachers.forEach(teacher => newSelected.add(teacher.id));
+        return newSelected;
+      });
+    }
+  };
+
+  const handleBulkDeleteTeachers = async () => {
+    if (selectedTeachers.size === 0) {
+      toast.error('Выберите преподавателей для удаления');
+      return;
+    }
+
+    try {
+      const promises = Array.from(selectedTeachers).map(teacherId => 
+        api.delete(`/admin/teachers/${teacherId}`)
+      );
+
+      await Promise.all(promises);
+      toast.success(`Успешно удалено преподавателей: ${selectedTeachers.size}`);
+      setSelectedTeachers(new Set());
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Ошибка при удалении преподавателей');
     }
   };
 
@@ -301,13 +357,36 @@ const AdminTeachers = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">
             Преподаватели ({teachers.filter(t => 
               t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               (t.username && t.username.toLowerCase().includes(searchTerm.toLowerCase()))
             ).length})
           </h3>
+          {selectedTeachers.size > 0 && (
+            <div className="flex items-center space-x-3">
+              <span className="text-sm text-gray-600">
+                Выбрано: <span className="font-semibold text-blue-600">{selectedTeachers.size}</span>
+              </span>
+              <button
+                onClick={toggleSelectAllTeachers}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                {teachers.filter(t => 
+                  t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  (t.username && t.username.toLowerCase().includes(searchTerm.toLowerCase()))
+                ).every(t => selectedTeachers.has(t.id)) ? 'Снять выделение' : 'Выбрать все'}
+              </button>
+              <button
+                onClick={handleBulkDeleteTeachers}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Удалить выбранные
+              </button>
+            </div>
+          )}
         </div>
         
         {teachers.filter(t => 
@@ -324,6 +403,7 @@ const AdminTeachers = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12"></th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ФИО</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Имя пользователя</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
@@ -333,54 +413,69 @@ const AdminTeachers = () => {
                 {teachers.filter(t => 
                   t.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                   (t.username && t.username.toLowerCase().includes(searchTerm.toLowerCase()))
-                ).map((teacher) => (
-                  <tr key={teacher.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{teacher.full_name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {teacher.username}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                ).map((teacher) => {
+                  const isSelected = selectedTeachers.has(teacher.id);
+                  return (
+                    <tr key={teacher.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <button
-                          onClick={() => handleViewTeacher(teacher)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Просмотр дисциплин и групп"
+                          onClick={() => toggleTeacherSelection(teacher.id)}
+                          className="cursor-pointer"
                         >
-                          <Eye className="h-4 w-4" />
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400" />
+                          )}
                         </button>
-                        <button
-                          onClick={() => handleEditTeacher(teacher)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Редактировать"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedTeacher(teacher);
-                            setSelectedItems(new Set());
-                            setLinkSearchTerm('');
-                            setLinkType('exam');
-                            setShowLinkModal(true);
-                          }}
-                          className="text-green-600 hover:text-green-900"
-                          title="Закрепить дисциплины/группы"
-                        >
-                          <LinkIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTeacher(teacher.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Удалить"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{teacher.full_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {teacher.username}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleViewTeacher(teacher)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="Просмотр дисциплин и групп"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditTeacher(teacher)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Редактировать"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedTeacher(teacher);
+                              setSelectedItems(new Set());
+                              setLinkSearchTerm('');
+                              setLinkType('exam');
+                              setShowLinkModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-900"
+                            title="Закрепить дисциплины/группы"
+                          >
+                            <LinkIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTeacher(teacher.id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Удалить"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

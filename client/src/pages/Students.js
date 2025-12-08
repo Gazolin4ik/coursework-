@@ -10,7 +10,9 @@ import {
   Users,
   BookOpen,
   CheckCircle,
-  XCircle
+  XCircle,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../services/authService';
@@ -38,6 +40,7 @@ const Students = () => {
   const [studentId, setStudentId] = useState(null);
   const [studentGroup, setStudentGroup] = useState('');
   const [disciplineType, setDisciplineType] = useState('exam'); // 'exam' or 'credit'
+  const [selectedStudents, setSelectedStudents] = useState(new Set());
 
   useEffect(() => {
     fetchStudents();
@@ -124,9 +127,66 @@ const Students = () => {
       toast.success('Студент успешно удален');
       setShowDeleteModal(false);
       setSelectedStudent(null);
+      setSelectedStudents(new Set());
       fetchStudents();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Ошибка при удалении студента');
+    }
+  };
+
+  const toggleStudentSelection = (studentId) => {
+    setSelectedStudents(prevSelected => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(studentId)) {
+        newSelected.delete(studentId);
+      } else {
+        newSelected.add(studentId);
+      }
+      return newSelected;
+    });
+  };
+
+  const toggleSelectAllStudents = () => {
+    const filteredStudents = students.filter(s => {
+      const matchesSearch = s.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.group_name && s.group_name.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesGroup = !selectedGroup || s.group_id === parseInt(selectedGroup);
+      return matchesSearch && matchesGroup;
+    });
+    const allSelected = filteredStudents.every(student => selectedStudents.has(student.id));
+    
+    if (allSelected) {
+      setSelectedStudents(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredStudents.forEach(student => newSelected.delete(student.id));
+        return newSelected;
+      });
+    } else {
+      setSelectedStudents(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredStudents.forEach(student => newSelected.add(student.id));
+        return newSelected;
+      });
+    }
+  };
+
+  const handleBulkDeleteStudents = async () => {
+    if (selectedStudents.size === 0) {
+      toast.error('Выберите студентов для удаления');
+      return;
+    }
+
+    try {
+      const promises = Array.from(selectedStudents).map(studentId => 
+        api.delete(`/students/${studentId}`)
+      );
+
+      await Promise.all(promises);
+      toast.success(`Успешно удалено студентов: ${selectedStudents.size}`);
+      setSelectedStudents(new Set());
+      fetchStudents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Ошибка при удалении студентов');
     }
   };
 
@@ -409,10 +469,30 @@ const Students = () => {
       {/* Для преподавателей и администраторов: таблица студентов - НЕ показывать для студентов! */}
       {!isStudent && (isTeacher || isAdmin) && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
               Студенты ({filteredStudents.length})
             </h3>
+            {selectedStudents.size > 0 && (
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-600">
+                  Выбрано: <span className="font-semibold text-blue-600">{selectedStudents.size}</span>
+                </span>
+                <button
+                  onClick={toggleSelectAllStudents}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  {filteredStudents.every(s => selectedStudents.has(s.id)) ? 'Снять выделение' : 'Выбрать все'}
+                </button>
+                <button
+                  onClick={handleBulkDeleteStudents}
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Удалить выбранные
+                </button>
+              </div>
+            )}
           </div>
           
           {filteredStudents.length === 0 ? (
@@ -433,6 +513,7 @@ const Students = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12"></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ФИО
                     </th>
@@ -448,13 +529,27 @@ const Students = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {student.full_name}
-                        </div>
-                      </td>
+                  {filteredStudents.map((student) => {
+                    const isSelected = selectedStudents.has(student.id);
+                    return (
+                      <tr key={student.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => toggleStudentSelection(student.id)}
+                            className="cursor-pointer"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="h-5 w-5 text-blue-600" />
+                            ) : (
+                              <Square className="h-5 w-5 text-gray-400" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {student.full_name}
+                          </div>
+                        </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                           {student.group_name}
@@ -501,7 +596,8 @@ const Students = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

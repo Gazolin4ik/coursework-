@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Users, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Search, CheckSquare, Square } from 'lucide-react';
 import api from '../services/authService';
 import toast from 'react-hot-toast';
 
@@ -12,6 +12,7 @@ const AdminGroups = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [formData, setFormData] = useState({ groupName: '' });
+  const [selectedItems, setSelectedItems] = useState(new Set());
 
   useEffect(() => {
     fetchGroups();
@@ -72,9 +73,61 @@ const AdminGroups = () => {
       toast.success('Группа успешно удалена');
       setShowDeleteModal(false);
       setSelectedGroup(null);
+      setSelectedItems(new Set());
       fetchGroups();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Ошибка при удалении группы');
+    }
+  };
+
+  const toggleItemSelection = (itemId) => {
+    setSelectedItems(prevSelected => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(itemId)) {
+        newSelected.delete(itemId);
+      } else {
+        newSelected.add(itemId);
+      }
+      return newSelected;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const filteredGroups = groups.filter(g => g.group_name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const allSelected = filteredGroups.every(group => selectedItems.has(group.id));
+    
+    if (allSelected) {
+      setSelectedItems(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredGroups.forEach(group => newSelected.delete(group.id));
+        return newSelected;
+      });
+    } else {
+      setSelectedItems(prevSelected => {
+        const newSelected = new Set(prevSelected);
+        filteredGroups.forEach(group => newSelected.add(group.id));
+        return newSelected;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.size === 0) {
+      toast.error('Выберите группы для удаления');
+      return;
+    }
+
+    try {
+      const promises = Array.from(selectedItems).map(groupId => 
+        api.delete(`/admin/groups/${groupId}`)
+      );
+
+      await Promise.all(promises);
+      toast.success(`Успешно удалено групп: ${selectedItems.size}`);
+      setSelectedItems(new Set());
+      fetchGroups();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Ошибка при удалении групп');
     }
   };
 
@@ -117,10 +170,30 @@ const AdminGroups = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">
             Группы ({groups.filter(g => g.group_name.toLowerCase().includes(searchTerm.toLowerCase())).length})
           </h3>
+          {selectedItems.size > 0 && (
+            <div className="flex items-center space-x-3">
+              <span className="text-sm text-gray-600">
+                Выбрано: <span className="font-semibold text-blue-600">{selectedItems.size}</span>
+              </span>
+              <button
+                onClick={toggleSelectAll}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                {groups.filter(g => g.group_name.toLowerCase().includes(searchTerm.toLowerCase())).every(g => selectedItems.has(g.id)) ? 'Снять выделение' : 'Выбрать все'}
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Удалить выбранные
+              </button>
+            </div>
+          )}
         </div>
         
         {groups.filter(g => g.group_name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
@@ -134,45 +207,61 @@ const AdminGroups = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12"></th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Название</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата создания</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {groups.filter(g => g.group_name.toLowerCase().includes(searchTerm.toLowerCase())).map((group) => (
-                  <tr key={group.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{group.group_name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(group.created_at).toLocaleDateString('ru-RU')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                {groups.filter(g => g.group_name.toLowerCase().includes(searchTerm.toLowerCase())).map((group) => {
+                  const isSelected = selectedItems.has(group.id);
+                  return (
+                    <tr key={group.id} className={`hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}`}>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <button
-                          onClick={() => {
-                            setSelectedGroup(group);
-                            setFormData({ groupName: group.group_name });
-                            setShowEditModal(true);
-                          }}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          onClick={() => toggleItemSelection(group.id)}
+                          className="cursor-pointer"
                         >
-                          <Edit className="h-4 w-4" />
+                          {isSelected ? (
+                            <CheckSquare className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400" />
+                          )}
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedGroup(group);
-                            setShowDeleteModal(true);
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{group.group_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(group.created_at).toLocaleDateString('ru-RU')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => {
+                              setSelectedGroup(group);
+                              setFormData({ groupName: group.group_name });
+                              setShowEditModal(true);
+                            }}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedGroup(group);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
