@@ -136,17 +136,41 @@ async function generateRealisticData() {
 
         // 1. Очистка существующих данных (важен порядок из-за внешних ключей)
         console.log('🧹 Очистка существующих данных...');
-        // Сначала удаляем зависимые таблицы
-        await client.query('DELETE FROM performance_predictions');
-        await client.query('DELETE FROM exam_grades');
-        await client.query('DELETE FROM credit_results');
-        await client.query('DELETE FROM teacher_exams');
-        await client.query('DELETE FROM teacher_credits');
-        await client.query('DELETE FROM teacher_groups');
-        // Потом основные таблицы
-        await client.query('DELETE FROM students');
-        await client.query('DELETE FROM teachers');
-        await client.query('DELETE FROM users WHERE role_id IN (1, 2)'); // Удаляем студентов и преподавателей, но не админов
+        // Порядок удаления основан на зависимостях внешних ключей.
+        // ВАЖНО: удаляем в порядке от зависимых таблиц к основным.
+        
+        // Шаг 1: Удаляем таблицы, зависящие только от students
+        const perfPredResult = await client.query('DELETE FROM performance_predictions');
+        console.log(`   Удалено прогнозов: ${perfPredResult.rowCount}`);
+        
+        // Шаг 2: Удаляем таблицы, зависящие от students И users (teacher_id)
+        // Эти таблицы должны быть удалены ДО удаления users
+        const examGradesResult = await client.query('DELETE FROM exam_grades');
+        console.log(`   Удалено оценок: ${examGradesResult.rowCount}`);
+        const creditResultsResult = await client.query('DELETE FROM credit_results');
+        console.log(`   Удалено результатов зачетов: ${creditResultsResult.rowCount}`);
+        
+        // Шаг 3: Удаляем таблицы, зависящие от teachers (должны быть удалены ДО teachers)
+        // Это критически важно - эти таблицы ссылаются на teachers(id)
+        const teacherExamsResult = await client.query('DELETE FROM teacher_exams');
+        console.log(`   Удалено связей преподаватель-экзамен: ${teacherExamsResult.rowCount}`);
+        const teacherCreditsResult = await client.query('DELETE FROM teacher_credits');
+        console.log(`   Удалено связей преподаватель-зачет: ${teacherCreditsResult.rowCount}`);
+        const teacherGroupsResult = await client.query('DELETE FROM teacher_groups');
+        console.log(`   Удалено связей преподаватель-группа: ${teacherGroupsResult.rowCount}`);
+        
+        // Шаг 4: Удаляем students и teachers (которые ссылаются на users)
+        // Эти таблицы должны быть удалены ДО удаления users
+        const studentsResult = await client.query('DELETE FROM students');
+        console.log(`   Удалено студентов: ${studentsResult.rowCount}`);
+        const teachersResult = await client.query('DELETE FROM teachers');
+        console.log(`   Удалено преподавателей: ${teachersResult.rowCount}`);
+        
+        // Шаг 5: В конце удаляем users (студентов и преподавателей, но не админов)
+        // Важно: exam_grades и credit_results имеют teacher_id -> users(id), 
+        // поэтому users удаляем последним, после удаления exam_grades и credit_results
+        const usersResult = await client.query('DELETE FROM users WHERE role_id IN (1, 2)');
+        console.log(`   Удалено пользователей: ${usersResult.rowCount}`);
         console.log('✅ Данные очищены\n');
 
         // 2. Получение справочных данных
