@@ -134,17 +134,19 @@ async function generateRealisticData() {
         // Начинаем транзакцию
         await client.query('BEGIN');
 
-        // 1. Очистка существующих данных
+        // 1. Очистка существующих данных (важен порядок из-за внешних ключей)
         console.log('🧹 Очистка существующих данных...');
+        // Сначала удаляем зависимые таблицы
         await client.query('DELETE FROM performance_predictions');
         await client.query('DELETE FROM exam_grades');
         await client.query('DELETE FROM credit_results');
-        await client.query('DELETE FROM students');
-        await client.query('DELETE FROM teachers');
-        await client.query('DELETE FROM users WHERE role_id IN (1, 2)'); // Удаляем студентов и преподавателей, но не админов
         await client.query('DELETE FROM teacher_exams');
         await client.query('DELETE FROM teacher_credits');
         await client.query('DELETE FROM teacher_groups');
+        // Потом основные таблицы
+        await client.query('DELETE FROM students');
+        await client.query('DELETE FROM teachers');
+        await client.query('DELETE FROM users WHERE role_id IN (1, 2)'); // Удаляем студентов и преподавателей, но не админов
         console.log('✅ Данные очищены\n');
 
         // 2. Получение справочных данных
