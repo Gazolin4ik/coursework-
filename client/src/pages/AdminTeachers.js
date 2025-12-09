@@ -24,6 +24,7 @@ const AdminTeachers = () => {
   const [editFormData, setEditFormData] = useState({ username: '', fullName: '' });
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [linkSearchTerm, setLinkSearchTerm] = useState('');
+  const [selectedViewItems, setSelectedViewItems] = useState({ exams: new Set(), credits: new Set(), groups: new Set() });
 
   useEffect(() => {
     fetchData();
@@ -75,6 +76,7 @@ const AdminTeachers = () => {
     setLoadingViewData(true);
     setTeacherDisciplines({ exams: [], credits: [] });
     setTeacherGroups([]);
+    setSelectedViewItems({ exams: new Set(), credits: new Set(), groups: new Set() });
     
     try {
       const [disciplinesData, groupsData] = await Promise.all([
@@ -90,21 +92,66 @@ const AdminTeachers = () => {
     }
   };
 
-  const handleUnlinkFromView = async (type, itemId) => {
+  const toggleViewItemSelection = (type, itemId) => {
+    setSelectedViewItems(prev => {
+      const newSelected = { ...prev };
+      const typeKey = type === 'exam' ? 'exams' : type === 'credit' ? 'credits' : 'groups';
+      const newSet = new Set(newSelected[typeKey]);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return { ...newSelected, [typeKey]: newSet };
+    });
+  };
+
+  const toggleSelectAllViewItems = (type) => {
+    setSelectedViewItems(prev => {
+      const newSelected = { ...prev };
+      const typeKey = type === 'exam' ? 'exams' : type === 'credit' ? 'credits' : 'groups';
+      const items = type === 'exam' ? teacherDisciplines.exams : type === 'credit' ? teacherDisciplines.credits : teacherGroups;
+      const currentSet = newSelected[typeKey];
+      const allSelected = items.length > 0 && items.every(item => currentSet.has(item.id));
+      
+      if (allSelected) {
+        return { ...newSelected, [typeKey]: new Set() };
+      } else {
+        const newSet = new Set(items.map(item => item.id));
+        return { ...newSelected, [typeKey]: newSet };
+      }
+    });
+  };
+
+  const handleBulkUnlinkFromView = async () => {
     if (!selectedTeacher) return;
     
-    try {
-      let endpoint;
-      if (type === 'exam') {
-        endpoint = `/admin/teachers/${selectedTeacher.id}/exams/${itemId}`;
-      } else if (type === 'credit') {
-        endpoint = `/admin/teachers/${selectedTeacher.id}/credits/${itemId}`;
-      } else {
-        endpoint = `/admin/teachers/${selectedTeacher.id}/groups/${itemId}`;
-      }
+    const totalSelected = selectedViewItems.exams.size + selectedViewItems.credits.size + selectedViewItems.groups.size;
+    if (totalSelected === 0) {
+      toast.error('Выберите элементы для открепления');
+      return;
+    }
 
-      await api.delete(endpoint);
-      toast.success('Связь успешно удалена');
+    try {
+      const promises = [];
+      
+      // Удаляем экзамены
+      selectedViewItems.exams.forEach(examId => {
+        promises.push(api.delete(`/admin/teachers/${selectedTeacher.id}/exams/${examId}`));
+      });
+      
+      // Удаляем зачеты
+      selectedViewItems.credits.forEach(creditId => {
+        promises.push(api.delete(`/admin/teachers/${selectedTeacher.id}/credits/${creditId}`));
+      });
+      
+      // Удаляем группы
+      selectedViewItems.groups.forEach(groupId => {
+        promises.push(api.delete(`/admin/teachers/${selectedTeacher.id}/groups/${groupId}`));
+      });
+
+      await Promise.all(promises);
+      toast.success(`Успешно откреплено элементов: ${totalSelected}`);
       
       // Обновляем данные в модальном окне
       const [disciplinesData, groupsData] = await Promise.all([
@@ -113,11 +160,12 @@ const AdminTeachers = () => {
       ]);
       setTeacherDisciplines(disciplinesData);
       setTeacherGroups(groupsData);
+      setSelectedViewItems({ exams: new Set(), credits: new Set(), groups: new Set() });
       
       // Обновляем общий список преподавателей
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Ошибка при удалении связи');
+      toast.error(error.response?.data?.message || 'Ошибка при откреплении связей');
     }
   };
 
@@ -737,6 +785,7 @@ const AdminTeachers = () => {
                   setSelectedTeacher(null);
                   setTeacherDisciplines({ exams: [], credits: [] });
                   setTeacherGroups([]);
+                  setSelectedViewItems({ exams: new Set(), credits: new Set(), groups: new Set() });
                 }}
                 className="text-gray-400 hover:text-gray-500"
               >
@@ -750,89 +799,176 @@ const AdminTeachers = () => {
               </div>
             ) : (
               <div className="space-y-6">
+                {/* Кнопка массового удаления */}
+                {(selectedViewItems.exams.size > 0 || selectedViewItems.credits.size > 0 || selectedViewItems.groups.size > 0) && (
+                  <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-md">
+                    <span className="text-sm text-gray-700">
+                      Выбрано для открепления: <span className="font-semibold text-red-600">
+                        {selectedViewItems.exams.size + selectedViewItems.credits.size + selectedViewItems.groups.size}
+                      </span>
+                    </span>
+                    <button
+                      onClick={handleBulkUnlinkFromView}
+                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Открепить выбранные
+                    </button>
+                  </div>
+                )}
+
                 {/* Экзамены */}
                 <div>
-                  <div className="flex items-center mb-3">
-                    <BookOpen className="h-5 w-5 text-blue-600 mr-2" />
-                    <h4 className="text-md font-medium text-gray-900">Экзамены</h4>
-                    <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {teacherDisciplines.exams.length}
-                    </span>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <BookOpen className="h-5 w-5 text-blue-600 mr-2" />
+                      <h4 className="text-md font-medium text-gray-900">Экзамены</h4>
+                      <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {teacherDisciplines.exams.length}
+                      </span>
+                    </div>
+                    {teacherDisciplines.exams.length > 0 && (
+                      <button
+                        onClick={() => toggleSelectAllViewItems('exam')}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {teacherDisciplines.exams.every(exam => selectedViewItems.exams.has(exam.id)) ? 'Снять выделение' : 'Выбрать все'}
+                      </button>
+                    )}
                   </div>
                   {teacherDisciplines.exams.length === 0 ? (
                     <p className="text-sm text-gray-500 pl-7">Нет закрепленных экзаменов</p>
                   ) : (
                     <div className="pl-7 space-y-2">
-                      {teacherDisciplines.exams.map((exam) => (
-                        <div key={exam.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md hover:bg-gray-100">
-                          <span className="text-sm text-gray-900">{exam.exam_name}</span>
-                          <button
-                            onClick={() => handleUnlinkFromView('exam', exam.id)}
-                            className="text-red-600 hover:text-red-900 ml-2"
-                            title="Открепить экзамен"
+                      {teacherDisciplines.exams.map((exam) => {
+                        const isSelected = selectedViewItems.exams.has(exam.id);
+                        return (
+                          <div
+                            key={exam.id}
+                            onClick={() => toggleViewItemSelection('exam', exam.id)}
+                            className={`flex items-center p-2 rounded-md cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-blue-100 border-2 border-blue-500'
+                                : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                            }`}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
+                            <div className="mr-3">
+                              {isSelected ? (
+                                <CheckSquare className="h-5 w-5 text-blue-600" />
+                              ) : (
+                                <Square className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                            <span className={`text-sm font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                              {exam.exam_name}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
 
                 {/* Зачеты */}
                 <div>
-                  <div className="flex items-center mb-3">
-                    <BookOpen className="h-5 w-5 text-green-600 mr-2" />
-                    <h4 className="text-md font-medium text-gray-900">Зачеты</h4>
-                    <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                      {teacherDisciplines.credits.length}
-                    </span>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <BookOpen className="h-5 w-5 text-green-600 mr-2" />
+                      <h4 className="text-md font-medium text-gray-900">Зачеты</h4>
+                      <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        {teacherDisciplines.credits.length}
+                      </span>
+                    </div>
+                    {teacherDisciplines.credits.length > 0 && (
+                      <button
+                        onClick={() => toggleSelectAllViewItems('credit')}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {teacherDisciplines.credits.every(credit => selectedViewItems.credits.has(credit.id)) ? 'Снять выделение' : 'Выбрать все'}
+                      </button>
+                    )}
                   </div>
                   {teacherDisciplines.credits.length === 0 ? (
                     <p className="text-sm text-gray-500 pl-7">Нет закрепленных зачетов</p>
                   ) : (
                     <div className="pl-7 space-y-2">
-                      {teacherDisciplines.credits.map((credit) => (
-                        <div key={credit.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md hover:bg-gray-100">
-                          <span className="text-sm text-gray-900">{credit.credit_name}</span>
-                          <button
-                            onClick={() => handleUnlinkFromView('credit', credit.id)}
-                            className="text-red-600 hover:text-red-900 ml-2"
-                            title="Открепить зачет"
+                      {teacherDisciplines.credits.map((credit) => {
+                        const isSelected = selectedViewItems.credits.has(credit.id);
+                        return (
+                          <div
+                            key={credit.id}
+                            onClick={() => toggleViewItemSelection('credit', credit.id)}
+                            className={`flex items-center p-2 rounded-md cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-blue-100 border-2 border-blue-500'
+                                : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                            }`}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
+                            <div className="mr-3">
+                              {isSelected ? (
+                                <CheckSquare className="h-5 w-5 text-blue-600" />
+                              ) : (
+                                <Square className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                            <span className={`text-sm font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                              {credit.credit_name}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
 
                 {/* Группы */}
                 <div>
-                  <div className="flex items-center mb-3">
-                    <Users className="h-5 w-5 text-purple-600 mr-2" />
-                    <h4 className="text-md font-medium text-gray-900">Группы</h4>
-                    <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
-                      {teacherGroups.length}
-                    </span>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center">
+                      <Users className="h-5 w-5 text-purple-600 mr-2" />
+                      <h4 className="text-md font-medium text-gray-900">Группы</h4>
+                      <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                        {teacherGroups.length}
+                      </span>
+                    </div>
+                    {teacherGroups.length > 0 && (
+                      <button
+                        onClick={() => toggleSelectAllViewItems('group')}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {teacherGroups.every(group => selectedViewItems.groups.has(group.id)) ? 'Снять выделение' : 'Выбрать все'}
+                      </button>
+                    )}
                   </div>
                   {teacherGroups.length === 0 ? (
                     <p className="text-sm text-gray-500 pl-7">Нет закрепленных групп</p>
                   ) : (
                     <div className="pl-7 space-y-2">
-                      {teacherGroups.map((group) => (
-                        <div key={group.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md hover:bg-gray-100">
-                          <span className="text-sm text-gray-900">{group.group_name}</span>
-                          <button
-                            onClick={() => handleUnlinkFromView('group', group.id)}
-                            className="text-red-600 hover:text-red-900 ml-2"
-                            title="Открепить группу"
+                      {teacherGroups.map((group) => {
+                        const isSelected = selectedViewItems.groups.has(group.id);
+                        return (
+                          <div
+                            key={group.id}
+                            onClick={() => toggleViewItemSelection('group', group.id)}
+                            className={`flex items-center p-2 rounded-md cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-blue-100 border-2 border-blue-500'
+                                : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                            }`}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
+                            <div className="mr-3">
+                              {isSelected ? (
+                                <CheckSquare className="h-5 w-5 text-blue-600" />
+                              ) : (
+                                <Square className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                            <span className={`text-sm font-medium ${isSelected ? 'text-blue-900' : 'text-gray-900'}`}>
+                              {group.group_name}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
